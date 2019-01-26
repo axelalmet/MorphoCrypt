@@ -1,0 +1,19 @@
+   0  -1.7976+308  1.7976+308 -1.7976+308  1.7976+308
+   0   EPSL= 1.0000E-09  EPSU = 1.0000E-09  EPSS = 1.0000E-07
+   0   DS  = 1.0000E-03  DSMIN= 1.0000E-10  DSMAX= 1.0000E-03
+   0   NDIM=   7   IPS =   4   IRS =   2   ILP =   0
+   0   NTST= 150   NCOL=   5   IAD =   3   ISP =   3
+   0   ISW =  -1   IPLT=   7   NBC =   7   NINT=   0
+   0   NMX= 5000   NPR=  500   MXBF=  10   IID =   2   IADS=   1
+   0   ITMX=   8   ITNW=   4   NWTN=   3   JAC =   0   NUZR=   1
+   0   NPAR=   5   THL = {}    THU = {}
+   0   UZSTOP = {'Extremum': 2.5000000000E+00}
+   0   e = 'planarmorphorods'
+   0   parnames = {1: 'gamma', 2: 'K', 3: 'L', 4: 'H', 5: 'Extremum'}
+   0   unames   = {1: 'S', 2: 'X', 3: 'Y', 4: 'F', 5: 'G', 6: 'Theta', 7: 'M'}
+   0   User-specified parameters:       'gamma' 'K' 'L' 'Extremum'
+   0   Active continuation parameter:   'gamma'
+   0
+   0    PT  TY  LAB     gamma              MAX M              MAX S              MAX X              MAX Y                K                  L               Extremum        
+   2     1   0    0   1.1394620831E+00   0.0000000000E+00   2.8867514105E+01   2.8867514105E+01   0.0000000000E+00   5.0000000000E+01   2.8867514105E+01   0.0000000000E+00
+   2     2  -9    1   1.1394620831E+00   0.0000000000E+00   2.8867514105E+01   2.8867514105E+01   0.0000000000E+00   5.0000000000E+01   2.8867514105E+01   0.0000000000E+00

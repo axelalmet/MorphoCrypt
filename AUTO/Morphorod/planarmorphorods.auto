@@ -1,0 +1,39 @@
+
+#=======================================================
+#      			Planar Morphoelastic Rods
+#=======================================================
+fileName = 'planarmorphorodskf0p01L1Eb1'
+outputDirectory = " ../Output/"
+
+print "\n***Compute the zero solution branch***"
+bvp=run(e='planarmorphorods', c='planarmorphorods', ICP=['gamma', 'K', 'Extremum'],
+			 NPR=10000, NMX=150000, UZSTOP={'gamma':2.5})
+
+bifurcationSolution = load(bvp("BP1"), IAD=3, ISW=-1, DS=1e-3, DSMAX=1e-3)
+savedBvp = run(bifurcationSolution, ICP = ['gamma', 'K', 'L', 'Extremum'], 
+				NPR=10, NMX=50, UZSTOP={'Extremum':1.5})
+
+savedBvp=rl(savedBvp)
+save(savedBvp, fileName)
+
+bd = loadbd(fileName)
+outputFileName = fileName + 'BD'
+bd.writeRawFilename(outputFileName)
+
+sols = sl(fileName)
+solIndices = range(1, len(sols) + 1)
+
+for index in solIndices:
+	solName = fileName + '_sol_' + str(index)
+	sols(index).writeRawFilename(solName)
+	shell("mv " + solName + outputDirectory + "Solutions/" + solName)
+#-------------------------------------------------------
+#-------------------------------------------------------
+print "\n***Clean the directory***"
+
+shell("mv b." + fileName + outputDirectory + "b." + fileName)
+shell("mv s." + fileName + outputDirectory + "s." + fileName)
+shell("mv d." + fileName + outputDirectory + "d." + fileName)
+shell("mv " + outputFileName + outputDirectory + outputFileName)
+
+cl()

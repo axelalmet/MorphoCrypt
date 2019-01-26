@@ -1,0 +1,13 @@
+! Set solution names
+unames={1:'Q', 2:'N', 3:'Theta', 4:'K'}
+
+! Set parameter names
+parnames={1:'P', 2:'L', 3:'Extremum', 4: 'K0'}
+
+NDIM=4, IPS=4, IRS=0, ILP=0
+ICP=['P', 'L', 'Extremum', 'K0']
+NTST=150, NCOL=5, IAD=0, ISP=3, ISW=1, IPLT=7, NBC=7, NINT=0
+NMX=800, NPR=500, MXBF=10, IID=2, ITMX=8, ITNW=4, NWTN=3, JAC=0
+EPSL=1e-9, EPSU=1e-9, EPSS=1e-7
+DS=1e-2, DSMIN=1e-4, DSMAX=1e-1, IADS=1
+NPAR=4, THL={}, THU={}

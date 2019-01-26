@@ -1,0 +1,39 @@
+
+#=======================================================
+#      			Planar Morphoelastic Rods
+#=======================================================
+fileName = 'kellermodel'
+outputDirectory = " ./Output/"
+
+print "\n***Compute the zero solution branch***"
+bvp=run(e='keller', c='keller', ICP=['P', 'L', 'Extremum', 'K0'], ISW=-1,
+			 NPR=500, NMX=5000, STOP=["BP1"])
+
+bifurcationSolution = load(bvp("BP1"), IAD=3, ISW=-1, DS=1e-2, DSMAX=1e-2)
+savedBvp = run(bifurcationSolution, ICP=['P', 'L', 'Extremum', 'K0'],
+				NPR=10, NMX=50, UZSTOP={'Extremum':1.5})
+
+savedBvp=rl(savedBvp)
+save(savedBvp, fileName)
+
+bd = loadbd(fileName)
+outputFileName = fileName + 'BD'
+bd.writeRawFilename(outputFileName)
+
+sols = sl(fileName)
+solIndices = range(1, len(sols) + 1)
+
+for index in solIndices:
+	solName = fileName + '_sol_' + str(index)
+	sols(index).writeRawFilename(solName)
+	shell("mv " + solName + outputDirectory + "/Solutions/" + solName)
+#-------------------------------------------------------
+#-------------------------------------------------------
+print "\n***Clean the directory***"
+
+shell("mv b." + fileName + outputDirectory + "b." + fileName)
+shell("mv s." + fileName + outputDirectory + "s." + fileName)
+shell("mv d." + fileName + outputDirectory + "d." + fileName)
+shell("mv " + outputFileName + outputDirectory + outputFileName)
+
+cl()
