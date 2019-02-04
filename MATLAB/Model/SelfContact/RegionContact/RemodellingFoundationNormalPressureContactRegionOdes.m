@@ -13,16 +13,16 @@ Py = modelParams.Py;
     function dMdS = ContactEqns(x, M, region)
         
         % Define the state variables
-        S = M(1,:);
-        X = M(2,:);
-        Y = M(3,:);
-        F = M(4,:);
-        G = M(5,:);
-        theta = M(6,:);
-        m = M(7,:);
-        sc = M(8,:);
-        A = M(9,:);
-        pC = M(10,:);
+%         S = M(1,:);
+        X = M(1,:);
+        Y = M(2,:);
+        F = M(3,:);
+        G = M(4,:);
+        theta = M(5,:);
+        m = M(6,:);
+        sc = M(7,:);
+        A = M(8,:);
+        pC = M(9,:);
         
         % Interpolate the parameters if they are non-constant
         if (length(gamma) > 1)
@@ -50,7 +50,6 @@ Py = modelParams.Py;
                 
                 l = sc;
  
-                dSdS = (l).*ones(1, length(S));
                 dxdS = (l).*gamma.*cos(theta);
                 dydS = (l).*gamma.*sin(theta);
                 dFdS = (l).*gamma.*(K.*(X - Px) - pC.*sin(theta));
@@ -65,7 +64,6 @@ Py = modelParams.Py;
                 
                 l = 0.5 - sc;
                 
-                dSdS = (l).*ones(1, length(S));
                 dxdS = (l).*gamma.*cos(theta);
                 dydS = (l).*gamma.*sin(theta);
                 dFdS = (l).*gamma.*K.*(X - Px);
@@ -75,12 +73,12 @@ Py = modelParams.Py;
                 dscdS = zeros(1, length(S));
                 dAdS = zeros(1, length(S));
                 dpCdS = zeros(1, length(S));
-                
+
             otherwise
                 error('MATLAB:contactodes:BadRegionIndex','Incorrect region index: %d',region);
         end
         
-        dMdS = [dSdS; dxdS; dydS; dFdS; dGdS; dthetadS; dmdS; dscdS; dAdS; dpCdS];
+        dMdS = [dxdS; dydS; dFdS; dGdS; dthetadS; dmdS; dscdS; dAdS; dpCdS];
         
     end
 

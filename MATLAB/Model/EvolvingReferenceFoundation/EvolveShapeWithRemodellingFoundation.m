@@ -23,7 +23,7 @@ solFromData.y = solData(:,2:end)';
 
 solFromData.y(3,:) = y0 + solFromData.y(3,:);
 
-sigma = w/L0; % "Width" of Wnt gradient
+sigma = 2*w/L0; % "Width" of Wnt gradient
 w0 = 0.0*sigma;
 % sigma = 0.005;
 
@@ -35,7 +35,7 @@ parameters.W = W;
 eta = 1.0/24; % Growth timescale (24 hours)
 etaF = eta^(-1);
 
-mu3 = 0.1;
+mu3 = 1;
 
 g = 1;
 N = 2;
@@ -94,8 +94,9 @@ n3Old = FOld.*cos(thetaOld) + GOld.*sin(thetaOld);
 % Mechanosensitive growth
 % firstGamma = 1 + dt*(W(SOld, sigma) + mu3.*tanh((n3Old - n3s)));
 % firstGamma = 1 + dt*(W(SOld, sigma) + mu3.*(n3Old - n3s));
-firstGamma = 1 + dt*(W(SOld, sigma).*(1 + mu3.*tanh(n3Old - n3s)));
-% firstGamma = 1 + dt*(W(SOld, sigma) + mu3.*(n3Old - n3s)./(1 + (n3Old - n3s).^2));
+% firstGamma = 1 + dt*(W(SOld, sigma).*(1 + mu3.*tanh(n3Old - n3s)));
+% firstGamma = 1 + dt*(W(SOld, sigma).*(1 + tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./abs(max(n3Old) - min(n3Old))));
+firstGamma = 1 + dt*(W(SOld, sigma));
 % firstGamma = 1 + g*dt;
 parameters.gamma = firstGamma;
 
@@ -157,7 +158,7 @@ flatSol.y = initSol.y;
 flatSol.y(3,:) = 0.*flatSol.y(3,:);
 flatSol.y(5:end,:) = 0.*flatSol.y(5:end,:);
 
-Sols{1} = [flatSol.x; flatSol.y; ones(1, length(flatSol.x))];
+Sols{1} = [flatSol.x; flatSol.y; zeros(1, length(flatSol.x))];
 foundationSols{1} = [initSol.y(1,:); y0.*ones(1, length(initSol.x))];
 
 
@@ -211,14 +212,15 @@ end
 
 toc
 % 
-%%
-Sols = Sols(1:(i - 1));
-times = times(1:(i - 1));
-foundationSols = foundationSols(1:(i - 1));
+% %%
+% Sols = Sols(1:(i - 1));
+% times = times(1:(i - 1));
+% foundationSols = foundationSols(1:(i - 1));
 
 %% Save the solutions
 outputDirectory = '../../Solutions/RemodellingFoundation/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_sigma_w_mechanoamplifyinggrowth_saturatingfeedback_mu3_0p1_w0_0';
+% outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_sigma_2w_mechanosensitivegrowth_saturatingsensitivity_mu3_1_w0_0';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_sigma_2w';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % save([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationSols') % Foundation stresses

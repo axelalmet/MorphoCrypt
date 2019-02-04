@@ -29,7 +29,7 @@ PyFromData = PFromData(2,:);
 % Set the "Wnt" function
 parameters.W = @(x, sigma) exp(-((x)./sigma).^2);
 
-%% Construct the initial guess for bvp4c 
+%% Construct the initial guess for bvp4c
 
 % Initialise the guesses for the contact point
 possibleContactPoints = find(abs(solFromData.y(6,:) + 0.5*pi) < 5*1e-2);
@@ -48,16 +48,16 @@ parameters.A0 = A0;
 
 initSol.y = [solFromData.y(1:7, 1:contIndex), solFromData.y(1:7, contIndex:end)];
 
-initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:)))];
-% initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:))); AGuess; ...
-%                 pCGuess.*ones(1, length(initSol.y(1,:)))];             
-            
+% initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:)))];
+initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:))); AGuess; ...
+    pCGuess.*ones(1, length(initSol.y(1,:)))];
+
 initSol.x = [linspace(0, 1, length(solFromData.x(1:contIndex))), ...
     linspace(1, 2, length(solFromData.x(contIndex:end)))];
 
 initX = initSol.y(2,:);
-initPx = PxFromData([1:contIndex,contIndex:end]);  
-            
+initPx = PxFromData([1:contIndex,contIndex:end]);
+
 parameters.Px = initPx + (parameters.dt)*(parameters.nu).*(initX - initPx);
 
 initY = initSol.y(3,:);
@@ -68,7 +68,7 @@ parameters.Py = initPy + (parameters.dt)*(parameters.nu).*(initY - initPy);
 % initEb = EbFromData([1:contIndex, contIndex:end]);
 
 % parameters.Eb = initEb;
-% 
+%
 firstGamma = gammaFromData;
 parameters.gamma = firstGamma + (parameters.g)*(parameters.dt);
 
@@ -77,23 +77,23 @@ parameters.gamma = firstGamma + (parameters.g)*(parameters.dt);
 %%
 
 % Solve the new contact system
-    
+
 % Define the ODEs and BCs
-% DerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactHalfIntervalOdes(x, M, region, initSol, parameters);
+DerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactHalfIntervalOdes(x, M, region, initSol, parameters);
 % DerivFun = @(x, M, region) RemodellingFoundationContactWithRepulsionOdes(x, M, region, initSol, parameters);
-DerivFun = @(x, M, region) RemodellingFoundationContactHalfIntervalOdes(x, M, region, initSol, parameters);
+% DerivFun = @(x, M, region) RemodellingFoundationContactHalfIntervalOdes(x, M, region, initSol, parameters);
 
-% Set the boundary conditions 
-% BcFun = @(Ml, Mr) SelfPointContactNormalPressureBCs(Ml, Mr, parameters);
-BcFun = @(Ml, Mr) SelfPointContactHalfIntervalBCs(Ml, Mr, parameters);
+% Set the boundary conditions
+BcFun = @(Ml, Mr) SelfPointContactNormalPressureBCs(Ml, Mr, parameters);
+% BcFun = @(Ml, Mr) SelfPointContactHalfIntervalBCs(Ml, Mr, parameters);
 
-maxPoints = 1e4;    
+maxPoints = 1e4;
 
 % Set the tolerances and max. number of mesh points
 solOptions = bvpset('RelTol', 1e-4,'AbsTol', 1e-4, 'NMax', maxPoints, 'Vectorized', 'On');
 
 tic
-% Solve the system. 
+% Solve the system.
 contactSolOld = bvp4c(DerivFun, BcFun, initSol, solOptions);
 
 toc
@@ -107,11 +107,11 @@ PxOld = parameters.Px;
 parameters.Px = InterpolateToNewMesh(initSol.x, PxOld, contactSolOld.x);
 
 PyOld = parameters.Py;
-parameters.Py = InterpolateToNewMesh(initSol.x, PyOld, contactSolOld.x); 
+parameters.Py = InterpolateToNewMesh(initSol.x, PyOld, contactSolOld.x);
 
 tMax = 5.0;
 tMin = times(end - endIndex);
-dt = 0.05;
+dt = 0.01;
 parameters.dt = dt;
 newTimes = tMin:dt:tMax;
 numSols = length(newTimes);
@@ -131,41 +131,41 @@ for i = 2:numSols
     [contactSolNew, EbNew, gammaNew, PxNew, PyNew] = UpdateRemodellingFoundationShapeWithContact(contactSolOld, parameters, solOptions);
     
     % Interpolate the bending stiffness to the new mesh
-%     parameters.Eb =  InterpolateToNewMesh(contactSolOld.x, EbNew, contactSolNew.x);
+    %     parameters.Eb =  InterpolateToNewMesh(contactSolOld.x, EbNew, contactSolNew.x);
     
     % Update the foundation shape
     parameters.Px = InterpolateToNewMesh(contactSolOld.x, PxNew, contactSolNew.x);
     parameters.Py = InterpolateToNewMesh(contactSolOld.x, PyNew, contactSolNew.x);
     
-%     if (HasRodHitRegionContact(contactSolNew, parameters) )
-%         
-%         contactSols = contactSols(1:(i - 1));
-%         newTimes = newTimes(1:(i - 1));
-%         momentAtContact = momentAtContact(1:(i - 1));
-%         foundationContactSols = foundationContactSols(1:(i - 1));
-%         
-%         break
-%         
-%     end
-    
     contactSols{i} = [contactSolNew.x; contactSolNew.y];
     foundationContactSols{i} = [parameters.Px; parameters.Py];
     momentAtContact(i) = contactSolNew.y(7, find(contactSolNew.x == 1, 1));
-
-%     % Plot the shape
-%     figure(1)
-%     subplot(1, 2, 1)
-%     hold on
-%     plot(contactSolNew.y(2,:), -contactSolNew.y(3,:))
-%     
-%     % Plot the bending moment (curvature)
-%     figure(1)
-%     subplot(1, 2, 2)
-%     hold on
-%     plot(contactSolNew.y(1,:), contactSolNew.y(7,:))
+    
+    %     % Plot the shape
+    %     figure(1)
+    %     subplot(1, 2, 1)
+    %     hold on
+    %     plot(contactSolNew.y(2,:), -contactSolNew.y(3,:))
+    %
+    %     % Plot the bending moment (curvature)
+    %     figure(1)
+    %     subplot(1, 2, 2)
+    %     hold on
+    %     plot(contactSolNew.y(1,:), contactSolNew.y(7,:))
     
     contactSolOld = contactSolNew;
     parameters.gamma = gammaNew;
+    
+    if (HasRodHitRegionContact(contactSolOld, parameters) )
+        
+        contactSols = contactSols(1:(i));
+        newTimes = newTimes(1:(i));
+        momentAtContact = momentAtContact(1:(i));
+        foundationContactSols = foundationContactSols(1:(i));
+        
+        break
+        
+    end
     
 end
 
@@ -199,36 +199,39 @@ plot(-contactSols{end}(3,:), -contactSols{end}(4,:), 'k', 'linewidth', 1.5)
 %% Let's try contact along a region now
 % parameters.Px = InterpolateToNewMesh(contactSolOld.x, PxNew, contactSolNew.x);
 % parameters.Py = InterpolateToNewMesh(contactSolOld.x, PyNew, contactSolNew.x);
-    
-splitIndex = find(contactSolNew.x == 1, 1);
-initSol = contactSolNew;
 
-% gammaOld = parameters.gamma;
-% parameters.gamma = gammaOld - 0.5*(parameters.g)*(parameters.dt);
+% splitIndex = find(contactSolNew.x == 1, 1);
+% initSol = contactSolNew;
+
+initSol.x = contactSolOld.x;
+initSol.y = [contactSolOld.y(2,:)];
+
+gammaOld = parameters.gamma;
+% parameters.gamma = gammaOld + (parameters.g)*(parameters.dt);
 %% Solve the system for contact along a region
 
 % Define the ODEs and BCs
-% RegionDerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactRegionOdes(x, M, region, initSol, parameters);
+RegionDerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactRegionOdes(x, M, region, initSol, parameters);
 % RegionDerivFun = @(x, M, region) RemodellingFoundationWithRepulsionContactRegionOdes(x, M, region, initSol, parameters);
-RegionDerivFun = @(x, M, region) RemodellingFoundationContactRegionOdes(x, M, region, initSol, parameters);
+% RegionDerivFun = @(x, M, region) RemodellingFoundationContactRegionOdes(x, M, region, initSol, parameters);
 
-% Set the boundary conditions 
-% RegionBcFun = @(Ml, Mr) SelfPointContactRegionNormalPressureBCs(Ml, Mr, parameters);
-RegionBcFun = @(Ml, Mr) SelfPointContactRegionBCs(Ml, Mr, parameters);
+% Set the boundary conditions
+RegionBcFun = @(Ml, Mr) SelfPointContactRegionNormalPressureBCs(Ml, Mr, parameters);
+% RegionBcFun = @(Ml, Mr) SelfPointContactRegionBCs(Ml, Mr, parameters);
 
-maxPoints = 1e4;    
+maxPoints = 1e4;
 
 % Set the tolerances and max. number of mesh points
 solOptions = bvpset('RelTol', 1e-4,'AbsTol', 1e-4, 'NMax', maxPoints, 'Vectorized', 'On');
 
 tic
 
-% Solve the system. 
+% Solve the system.
 contactRegionSolOld = bvp4c(RegionDerivFun, RegionBcFun, initSol, solOptions);
 
 toc
 
-    
+
 %% Interpolate the new solutions on the new meshes
 
 % EbOld = parameters.Eb;
@@ -238,7 +241,7 @@ PxOld = parameters.Px;
 parameters.Px = InterpolateToNewMesh(initSol.x, PxOld, contactRegionSolOld.x);
 
 PyOld = parameters.Py;
-parameters.Py = InterpolateToNewMesh(initSol.x, PyOld, contactRegionSolOld.x); 
+parameters.Py = InterpolateToNewMesh(initSol.x, PyOld, contactRegionSolOld.x);
 
 %%
 
@@ -260,16 +263,16 @@ for i = 2:numSols
     [contactRegionSolNew, EbNew, gammaNew, PxNew, PyNew] = UpdateRemodellingFoundationShapeWithRegionContact(contactRegionSolOld, parameters, solOptions);
     
     % Interpolate the bending stiffness to the new mesh
-%     parameters.Eb =  InterpolateToNewMesh(contactRegionSolOld.x, EbNew, contactRegionSolNew.x);
+    %     parameters.Eb =  InterpolateToNewMesh(contactRegionSolOld.x, EbNew, contactRegionSolNew.x);
     
     % Update the foundation shape
     parameters.Px = InterpolateToNewMesh(contactRegionSolOld.x, PxNew, contactRegionSolNew.x);
     
     parameters.Py = InterpolateToNewMesh(contactRegionSolOld.x, PyNew, contactRegionSolNew.x);
-        
+    
     contactRegionSols{i} = [contactRegionSolNew.x; contactRegionSolNew.y];
     foundationContactRegionSols{i} = [parameters.Px; parameters.Py];
-        
+    
     % Plot the shape
     figure(1)
     hold on
