@@ -40,7 +40,7 @@ gammaOld = parameters.gamma;
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma).*(1 + tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./max(abs(n3Old) - n3s))));
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma).*(1 + tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./max(abs(n3Old) - n3s))));
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma) + mu3.*(n3Old - n3s)./(1 + (n3Old - n3s).^2)));
-gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma)));
+gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma)./trapz(SOld, W(currentArcLength, sigma))));
 % gammaNew = gammaOld + g*dt;
 parameters.gamma = gammaNew;
 

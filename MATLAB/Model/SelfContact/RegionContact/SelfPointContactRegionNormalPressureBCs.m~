@@ -20,7 +20,7 @@ Residuals = [Ml(1, 1), ... % S(0) = 0
              Ml(6, 2) + 0.5*pi, ... % contact condition theta = -pi/2
              Mr(7, 1), ... % contact condition m = 0
              Ml(7, 2), ... % contact condition m = 0
-             Ml(1, 2) - Mr(1, 1), ... 
+             Ml(1, 2) - Mr(8, 1), ... 
              Ml(8, 2) - Mr(8, 1), ... % continuity in sc
              Ml(9, 2) - Mr(9, 1), ... % continuity in A
              Mr(9, 2) - A0, ... A(sc) = A0

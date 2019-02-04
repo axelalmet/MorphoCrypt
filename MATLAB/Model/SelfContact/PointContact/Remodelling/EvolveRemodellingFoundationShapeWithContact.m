@@ -128,7 +128,22 @@ momentAtContact(1) = contactSolOld.y(7, find(contactSolOld.x == 1, 1));
 tic
 for i = 2:numSols
     
-    [contactSolNew, EbNew, gammaNew, PxNew, PyNew] = UpdateRemodellingFoundationShapeWithContact(contactSolOld, parameters, solOptions);
+    % Construct the solution guess using the previous two known solutions,
+    % if we can.
+    if (i == 2)
+        solGuess = contactSolOld;
+    else
+        contactSolPrevious.x = contactSols{i - 2}(1,:);
+        contactSolPrevious.y = contactSols{i - 2}(2:end,:);
+        
+        contactSolCurrent.x = contactSols{i - 1}(1,:);
+        contactSolCurrent.y = contactSols{i - 1}(2:end,:);
+        
+        solGuess = ConstructNewGuess(contactSolCurrent, contactSolPrevious);
+        
+    end
+    
+    [contactSolNew, EbNew, gammaNew, PxNew, PyNew] = UpdateRemodellingFoundationShapeWithContact(contactSolOld, solGuess, parameters, solOptions);
     
     % Interpolate the bending stiffness to the new mesh
     %     parameters.Eb =  InterpolateToNewMesh(contactSolOld.x, EbNew, contactSolNew.x);
@@ -158,14 +173,15 @@ for i = 2:numSols
     
     if (HasRodHitRegionContact(contactSolOld, parameters) )
         
-        contactSols = contactSols(1:(i));
-        newTimes = newTimes(1:(i));
-        momentAtContact = momentAtContact(1:(i));
-        foundationContactSols = foundationContactSols(1:(i));
+        contactSols = contactSols(1:(i - 1));
+        newTimes = newTimes(1:(i - 1));
+        momentAtContact = momentAtContact(1:(i - 1));
+        foundationContactSols = foundationContactSols(1:(i - 1));
         
         break
         
     end
+    
     
 end
 
@@ -178,7 +194,7 @@ toc
 % foundationContactSols = foundationContactSols(1:(end - 1));
 %% Save the solutions
 outputDirectory = '../../../../Solutions/RemodellingFoundation/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_const_area';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'contactSols') % Solutions
 % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationContactSols') % Foundation stresses
@@ -191,8 +207,8 @@ figure(3)
 hold on
 plot(solFromData.y(2,:), -solFromData.y(3,:), 'b','linewidth', 1.5)
 plot(-solFromData.y(2,:), -solFromData.y(3,:), 'b','linewidth', 1.5)
-plot(contactSols{1}(3,:), -contactSols{1}(4,:), 'r', 'linewidth', 1.5)
-plot(-contactSols{1}(3,:), -contactSols{1}(4,:), 'r', 'linewidth', 1.5)
+plot(contactSols{1}(3,:), -contactSols{2}(4,:), 'r', 'linewidth', 1.5)
+plot(-contactSols{1}(3,:), -contactSols{2}(4,:), 'r', 'linewidth', 1.5)
 plot(contactSols{end}(3,:), -contactSols{end}(4,:), 'k', 'linewidth', 1.5)
 plot(-contactSols{end}(3,:), -contactSols{end}(4,:), 'k', 'linewidth', 1.5)
 
@@ -200,18 +216,22 @@ plot(-contactSols{end}(3,:), -contactSols{end}(4,:), 'k', 'linewidth', 1.5)
 % parameters.Px = InterpolateToNewMesh(contactSolOld.x, PxNew, contactSolNew.x);
 % parameters.Py = InterpolateToNewMesh(contactSolOld.x, PyNew, contactSolNew.x);
 
-% splitIndex = find(contactSolNew.x == 1, 1);
 % initSol = contactSolNew;
 
-initSol.x = contactSolOld.x;
-initSol.y = [contactSolOld.y(2,:)];
+contactSolPrevious.x = contactSols{end - 1}(1, :);
+contactSolPrevious.y = contactSols{end - 1}(2:end, :);
+
+contactSolCurrent.x = contactSols{end}(1, :);
+contactSolCurrent.y = contactSols{end}(2:end, :);
+
+initSolGuess = ConstructNewGuess(contactSolCurrent, contactSolPrevious);
 
 gammaOld = parameters.gamma;
-% parameters.gamma = gammaOld + (parameters.g)*(parameters.dt);
+parameters.gamma = gammaOld + (parameters.g)*(parameters.dt);
 %% Solve the system for contact along a region
 
 % Define the ODEs and BCs
-RegionDerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactRegionOdes(x, M, region, initSol, parameters);
+RegionDerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactRegionOdes(x, M, region, initSolGuess, parameters);
 % RegionDerivFun = @(x, M, region) RemodellingFoundationWithRepulsionContactRegionOdes(x, M, region, initSol, parameters);
 % RegionDerivFun = @(x, M, region) RemodellingFoundationContactRegionOdes(x, M, region, initSol, parameters);
 

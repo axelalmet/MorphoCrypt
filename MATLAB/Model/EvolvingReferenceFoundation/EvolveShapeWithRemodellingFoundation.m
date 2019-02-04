@@ -12,7 +12,7 @@ K = 12*kf*L0^4/(w*h^3);
 % K = 50;
 Es = 1; % Stretching stiffness
 b1 = 0.0; % Bending stiffness
-dt = 0.05; % Time step
+dt = 0.01; % Time step
 
 % Get the initial solution from AUTO
 solData = load('../../../Data/planarmorphorodsinextkf0p01L1sol_1');
@@ -23,7 +23,7 @@ solFromData.y = solData(:,2:end)';
 
 solFromData.y(3,:) = y0 + solFromData.y(3,:);
 
-sigma = 2*w/L0; % "Width" of Wnt gradient
+sigma = w/L0; % "Width" of Wnt gradient
 w0 = 0.0*sigma;
 % sigma = 0.005;
 
@@ -96,7 +96,7 @@ n3Old = FOld.*cos(thetaOld) + GOld.*sin(thetaOld);
 % firstGamma = 1 + dt*(W(SOld, sigma) + mu3.*(n3Old - n3s));
 % firstGamma = 1 + dt*(W(SOld, sigma).*(1 + mu3.*tanh(n3Old - n3s)));
 % firstGamma = 1 + dt*(W(SOld, sigma).*(1 + tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./abs(max(n3Old) - min(n3Old))));
-firstGamma = 1 + dt*(W(SOld, sigma));
+firstGamma = 1 + dt*(W(SOld, sigma)./trapz(SOld, W(SOld, sigma)));
 % firstGamma = 1 + g*dt;
 parameters.gamma = firstGamma;
 
@@ -199,7 +199,7 @@ for i = 3:numSols
         Sols = Sols(1:(i - 1));
         times = times(1:(i - 1));
         foundationSols = foundationSols(1:(i - 1));
-        
+            
         break
     end
     
@@ -212,15 +212,15 @@ end
 
 toc
 % 
-% %%
-% Sols = Sols(1:(i - 1));
-% times = times(1:(i - 1));
-% foundationSols = foundationSols(1:(i - 1));
+%%
+Sols = Sols(1:(i));
+times = times(1:(i));
+foundationSols = foundationSols(1:(i));
 
 %% Save the solutions
 outputDirectory = '../../Solutions/RemodellingFoundation/';
 % outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_sigma_2w_mechanosensitivegrowth_saturatingsensitivity_mu3_1_w0_0';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_sigma_2w';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_sigma_w_normalised';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % save([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationSols') % Foundation stresses
