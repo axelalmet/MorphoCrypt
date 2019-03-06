@@ -1,7 +1,7 @@
 function EvolveStandardLinearSolidShapeWithoutGrowth
 % Load the solutions previously computed
 outputDirectory = '../../../Solutions/LinearViscoelasticFoundation/StandardLinearSolid/';
-outputValues = 'Eb_1_beta_0p5_nu_10_kf_0p01_L0_0p125_homoggrowth';
+outputValues = 'Eb_1_beta_0p25_nu_10_kf_0p01_L0_0p125_homoggrowth';
 
 load([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
@@ -9,7 +9,7 @@ load([outputDirectory, 'stresses_', outputValues,'.mat'], 'stressSols') % Founda
 load([outputDirectory, 'times_', outputValues, '.mat'], 'times') % Times
 load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 
-timeSample = 0.9;
+timeSample = 1.0;
 index = find(times == timeSample, 1);
 
 % Initialise the current solution, gamma and the stresses
@@ -56,7 +56,7 @@ for i = 2:numSols
     
     % Stop the solution the curve self-intersects or the stress tends to a
     % steady state
-    if ( (~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(norm(PNew - parameters.P, 2) < 1e-4) )
+    if ( (HasRodHitSelfContact(solNew, parameters))||(norm(PNew - parameters.P, 2) < 1e-4) )
         
         SolsWithoutGrowth = SolsWithoutGrowth(1:(i - 1));
         newTimes = newTimes(1:(i - 1));
@@ -80,12 +80,12 @@ end
 toc
 
 %%
-       SolsWithoutGrowth = SolsWithoutGrowth(1:(i - 1));
-        newTimes = newTimes(1:(i - 1));
-        stressSolsWithoutGrowth = stressSolsWithoutGrowth(1:(i - 1));
+SolsWithoutGrowth = SolsWithoutGrowth(1:(i - 1));
+newTimes = newTimes(1:(i - 1));
+stressSolsWithoutGrowth = stressSolsWithoutGrowth(1:(i - 1));
         
 outputDirectory = '../../../Solutions/LinearViscoelasticFoundation/StandardLinearSolid/';
-outputValues = 'Eb_1_beta_0p5_nu_10_kf_0p01_L0_0p125_relaxation';
+outputValues = 'Eb_1_beta_0p25_nu_10_kf_0p01_L0_0p125_relaxation';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'SolsWithoutGrowth') % Solutions
 save([outputDirectory, 'stresses_', outputValues,'.mat'], 'stressSolsWithoutGrowth') % Foundation stresses
 save([outputDirectory, 'times_', outputValues, '.mat'], 'newTimes') % Times

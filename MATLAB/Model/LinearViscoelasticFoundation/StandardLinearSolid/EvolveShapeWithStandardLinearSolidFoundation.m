@@ -15,7 +15,7 @@ Es = 1; % Stretching stiffness
 b1 = 0.0; % Bending stiffness
 dt = 5*1e-2; % Time step
 
-% Get the initial solution from AUTO 
+% Get the initial solution from AUTO
 solData = load('../../../../Data/planarmorphorodsinextkf0p01L1sol_1'); %
 % Cartesian basis
 
@@ -25,22 +25,24 @@ solFromData.y = solData(:,2:end)';
 % Translate solution up
 solFromData.y(3,:) = y0 + solFromData.y(3,:);
 
-% 
+%
 sigma = 2*sqrt(3)*2*w/h; % "Width" of Wnt gradient
 % % Define the Wnt function
 W = @(S, width) exp(-((S - 0.5*L)./width).^2);
 
 eta = 24; % Define eta such that \eta^{-1} = 24 hours
-mu = 0; 
-etaV = eta;
+mu = 0;
+etaV = 0.01*eta;
+beta = 0.5;
 
 g = 1;
-beta = 0.5;
+
+parameters.w0 = 0;
 
 parameters.beta = beta;
 parameters.g = g;
 parameters.K = K;
-parameters.L = L; % Rod length
+parameters.L = 0.5*L; % Rod length
 parameters.l = l;
 parameters.y0 = y0; % Rod centreline
 parameters.sigma = sigma; % Width of wnt gradient
@@ -55,6 +57,17 @@ parameters.nu = etaV/(kf*eta); % Foundation relaxation timescale
 parameters.etaK = 0*parameters.nu; % Curvature relaxation timescale
 parameters.dt = dt; % Time step
 
+% Shift the solutions so that we only focus on the 2nd half.
+solFromData.x = solFromData.x(300:end) - 0.5;
+solFromData.x(1) = 0;
+solFromData.x = solFromData.x/(solFromData.x(end));
+solFromData.y = solFromData.y(:, 300:end);
+solFromData.y(4,:) = solData(1:302,5)';
+solFromData.y(1, :) = solFromData.y(1, :) - 0.5;
+solFromData.y(2, :) = solFromData.y(2, :) - 0.5;
+
+solFromData.y([1; 2], 1) = [0; 0];
+
 %% Solve the initial bvp to obtain a structure for the first solution.
 initS = solFromData.y(1,:);
 initX = solFromData.y(2,:);
@@ -63,8 +76,8 @@ initY = solFromData.y(3,:);
 initDelta = sqrt((initX - initS).^2 + (initY).^2);
 
 initP = (1 - dt*beta/parameters.nu)^(-1).*(dt*beta*(1 - beta)*K/parameters.nu.*(initDelta - y0) ...
-                     + (K/parameters.nu).*(initDelta - y0));
-                 
+    + (K/parameters.nu).*(initDelta - y0));
+
 gammaOld = 1;
 firstGamma = gammaOld + g*dt;
 parameters.gamma = firstGamma;
@@ -74,8 +87,9 @@ parameters.P = zeros(1, length(solFromData.x));
 % Define the ODEs and BCs
 DerivFun = @(x, M) StandardLinearSolidFoundationOdes(x, M, solFromData, parameters);
 
-% Set the boundary conditions 
-BcFun = @(Ml, Mr) NonUniformGrowthBCs(Ml, Mr, parameters);
+% Set the boundary conditions
+% BcFun = @(Ml, Mr) NonUniformGrowthBCs(Ml, Mr, parameters);
+BcFun = @(Ml, Mr) PreSloughingBCs(Ml, Mr, parameters);
 
 maxPoints = 1e6;
 
@@ -83,27 +97,27 @@ tic
 % Set the tolerances and max. number of mesh points
 solOptions = bvpset('RelTol', 1e-4,'AbsTol', 1e-4, 'NMax', maxPoints, 'Vectorized', 'On');
 
-% Solve the system. 
+% Solve the system.
 numSol = bvp4c(DerivFun, BcFun, solFromData, solOptions);
 
 toc
 
-initSol.x = solFromData.x;
-initSol.y = deval(numSol, solFromData.x); 
+% initSol.x = solFromData.x;
+% initSol.y = deval(numSol, solFromData.x);
 
-% initSol = numSol;
-                            
-%%  
+initSol = numSol;
+
+%%
 % gammaOld = interp1(solFromData.x, firstGamma, initSol.x);
 % parameters.gamma = gammaOld;
 solOld = initSol;
-    
+
 initS = initSol.y(1,:);
 initX = initSol.y(2,:);
 initY = initSol.y(3,:);
 
 initDelta = sqrt((initX - initS).^2 + initY.^2);
-    
+
 if (parameters.nu == 0)
     
     parameters.P = (1 - beta)*K.*(initDelta - y0);
@@ -114,24 +128,24 @@ else
         + (K/parameters.nu).*(initDelta - y0));
     
 end
-                            
 
-solMesh = solFromData.x;
-    
+
+solMesh = initSol.x;
+
 % Set the times we want to solve the problem for
 
 TMax = 1000.0;
 times = 0:dt:TMax;
-numSols = length(times);    
+numSols = length(times);
 
 % Initialise the solutions
-Sols = cell(numSols, 1);    
+Sols = cell(numSols, 1);
 % gammaSols = cell(numSols, 1);
 stressSols = cell(numSols, 1);
 
 %  The first solution is always flat
 flatSol.x = initSol.x;
-flatSol.y = initSol.y;      
+flatSol.y = initSol.y;
 
 flatSol.y(3,:) = 0.*flatSol.y(3,:) + y0;
 flatSol.y(5:end,:) = 0.*flatSol.y(5:end,:);
@@ -164,7 +178,7 @@ for i = 3:numSols
     % Stop the solution if net growth drops below unity or the curve
     % self-intersects
     %     if ( (trapz(solNew.x, gammaOld) < 1)||(~isempty(InterX([solNew.y(2,:); solNew.y(3,:)]))) )
-    if ((~isempty(InterX([solNew.y(2,:); solNew.y(3,:)]))) )
+    if (HasRodHitSelfContact(solNew, parameters))
         
         Sols = Sols(1:(i - 1));
         %    gammaSols = gammaSols(1:(i - 1));
@@ -177,7 +191,7 @@ for i = 3:numSols
     solOld = solNew;
     
     Sols{i} = [solOld.x; solOld.y];
-%     gammaSols{i} = [L.*solNew.x; gammaOld];
+    %     gammaSols{i} = [L.*solNew.x; gammaOld];
     stressSols{i} = [L.*solNew.x; parameters.P];
     
     solMesh = solMeshNew;
@@ -186,11 +200,15 @@ end
 
 toc
 
-
+%%
+Sols = Sols(1:21);
+%    gammaSols = gammaSols(1:(i - 1));
+times = times(1:21);
+stressSols = stressSols(1:21);
 
 % Save the solutions
 outputDirectory = '../../../Solutions/LinearViscoelasticFoundation/StandardLinearSolid/';
-outputValues = 'Eb_1_beta_1_nu_100_kf_0p01_L0_0p125_homoggrowth';
+outputValues = 'Eb_1_beta_0p5_nu_1_kf_0p01_L0_0p125_homoggrowth';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % save([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
 save([outputDirectory, 'stresses_', outputValues,'.mat'], 'stressSols') % Foundation stresses

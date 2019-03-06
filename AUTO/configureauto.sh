@@ -5,4 +5,4 @@ source auto.env.sh
 cd ../
 ./configure
 make
-cd ~/Documents/MorphoelasticCrypt/AUTO
+cd ~/Documents/MorphoCrypt/AUTO

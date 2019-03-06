@@ -3,7 +3,6 @@ function Odes = StandardLinearSolidFoundationOdes(x, M, MOld, parameters)
 y0 = parameters.y0;
 K = parameters.K;
 beta = parameters.beta;
-l = parameters.l;
 L = parameters.L;
 nu = parameters.nu;
 dt = parameters.dt;

@@ -1,4 +1,4 @@
-function [SolNew, gammaNew, EbNew, KNew, PxNew, PyNew] = UpdateRemodellingFoundationSolution(solOld, parameters, options)
+function [SolNew, gammaNew, EbNew, KNew, PxNew, PyNew] = UpdateRemodellingFoundationSolution(solOld, solGuess, parameters, options)
 % Get the relevant parameters to update growth in time
 SOld = solOld.y(1,:);
 XOld = solOld.y(2,:);
@@ -37,10 +37,11 @@ gammaOld = parameters.gamma;
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma) + mu3.*tanh((n3Old - n3s))));
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma) + mu3.*(n3Old - n3s)));
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma).*(1 + mu3.*tanh(n3Old - n3s))));
-% gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma).*(1 + tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./max(abs(n3Old) - n3s))));
-% gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma).*(1 + tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./max(abs(n3Old) - n3s))));
+% relativeAbsoluteStress = mu3*(abs(trapz(SOld, n3Old)) - n3s);
+% gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma).*().*(n3Old - n3s)./max(abs(n3Old) - n3s))));
+% gammaNew = gammaOld.*(1 + dt*((tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./max(abs(n3Old) - n3s))));
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma) + mu3.*(n3Old - n3s)./(1 + (n3Old - n3s).^2)));
-gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma)./trapz(SOld, W(currentArcLength, sigma))));
+gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma)));
 % gammaNew = gammaOld + g*dt;
 parameters.gamma = gammaNew;
 
@@ -53,7 +54,7 @@ EbNew = parameters.Eb;
 KNew = parameters.K;
 
 % Define the ODEs
-Odes = @(x, M) RemodellingFoundationOdes(x, M, solOld, parameters);
+Odes = @(x, M) RemodellingFoundationOdes(x, M, solGuess, parameters);
 
 % Define the BCs
 Bcs = @(Ml, Mr) PreSloughingBCs(Ml, Mr, parameters); 

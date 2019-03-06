@@ -36,13 +36,13 @@ parameters.gamma = gammaNew;
 EbNew = parameters.Eb;
 
 %Define the ODes
-Odes = @(x, M, region) RemodellingFoundationNormalPressureContactHalfIntervalOdes(x, M, region, solOld, parameters);
+% Odes = @(x, M, region) RemodellingFoundationNormalPressureContactHalfIntervalOdes(x, M, region, solOld, parameters);
 % Odes = @(x, M, region) RemodellingFoundationContactHalfIntervalOdes(x, M, region, solOld, parameters);
-% Odes = @(x, M, region) RemodellingFoundationContactWithRepulsionOdes(x, M, region, solOld, parameters);
+Odes = @(x, M, region) RemodellingFoundationContactWithRepulsionOdes(x, M, region, solOld, parameters);
 
 % Set the boundary conditions 
-Bcs = @(Ml, Mr) SelfPointContactNormalPressureBCs(Ml, Mr, parameters);
-% Bcs = @(Ml, Mr) SelfPointContactHalfIntervalBCs(Ml, Mr, parameters);
+% Bcs = @(Ml, Mr) SelfPointContactNormalPressureBCs(Ml, Mr, parameters);
+Bcs = @(Ml, Mr) SelfPointContactHalfIntervalBCs(Ml, Mr, parameters);
 
 % Define solve the ODE system using bvp4c.
 SolNew = bvp4c(Odes, Bcs, solGuess, options);

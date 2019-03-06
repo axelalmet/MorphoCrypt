@@ -73,7 +73,7 @@ Py = modelParams.Py;
                 dthetadS = (l).*gamma.*(m./Eb);
                 dmdS = (l).*gamma.*(F.*sin(theta) - G.*cos(theta));
                 dscdS = zeros(1, length(S));
-                dAdS = -(l).*X.*gamma.*sin(theta);
+                dAdS = zeros(1, length(S));
                 dpCdS = zeros(1, length(S));
 
             otherwise

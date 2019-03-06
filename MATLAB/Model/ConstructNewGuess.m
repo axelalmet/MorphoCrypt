@@ -10,7 +10,7 @@ solPreviousInterp.x = solCurrent.x;
 numSols = size(solPrevious.y, 1);
 
 for i = 1:numSols
-solPreviousInterp.y(i,:) =  InterpolateToNewMesh(solPrevious.x, solPrevious.y(i,:), solCurrent.x);
+solPreviousInterp.y(i,:) =  interp1(solPrevious.x, solPrevious.y(i,:), solCurrent.x);
 end
 
 tangentVector = (solCurrent.y - solPreviousInterp.y)./norm((solCurrent.y - solPreviousInterp.y), 2);

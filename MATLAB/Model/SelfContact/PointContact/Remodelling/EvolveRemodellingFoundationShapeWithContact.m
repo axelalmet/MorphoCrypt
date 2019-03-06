@@ -1,6 +1,6 @@
 function EvolveRemodellingFoundationShapeWithContact
 % Load the solutions previously computed
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_repulsion_Q_5_N_2';
 outputDirectory = '../../../../Solutions/RemodellingFoundation/';
 
 load([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
@@ -11,7 +11,7 @@ load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Tim
 
 % Initialise the current solution, gamma and the stresses
 
-endIndex = 1;
+endIndex = 9;
 solFromData.x = Sols{end - endIndex}(1,:);
 solFromData.y = Sols{end - endIndex}(2:(end - 1),:);
 
@@ -48,9 +48,9 @@ parameters.A0 = A0;
 
 initSol.y = [solFromData.y(1:7, 1:contIndex), solFromData.y(1:7, contIndex:end)];
 
-% initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:)))];
-initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:))); AGuess; ...
-    pCGuess.*ones(1, length(initSol.y(1,:)))];
+initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:)))];
+% initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:))); AGuess; ...
+%     pCGuess.*ones(1, length(initSol.y(1,:)))];
 
 initSol.x = [linspace(0, 1, length(solFromData.x(1:contIndex))), ...
     linspace(1, 2, length(solFromData.x(contIndex:end)))];
@@ -79,13 +79,13 @@ parameters.gamma = firstGamma + (parameters.g)*(parameters.dt);
 % Solve the new contact system
 
 % Define the ODEs and BCs
-DerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactHalfIntervalOdes(x, M, region, initSol, parameters);
-% DerivFun = @(x, M, region) RemodellingFoundationContactWithRepulsionOdes(x, M, region, initSol, parameters);
+% DerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactHalfIntervalOdes(x, M, region, initSol, parameters);
+DerivFun = @(x, M, region) RemodellingFoundationContactWithRepulsionOdes(x, M, region, initSol, parameters);
 % DerivFun = @(x, M, region) RemodellingFoundationContactHalfIntervalOdes(x, M, region, initSol, parameters);
 
 % Set the boundary conditions
-BcFun = @(Ml, Mr) SelfPointContactNormalPressureBCs(Ml, Mr, parameters);
-% BcFun = @(Ml, Mr) SelfPointContactHalfIntervalBCs(Ml, Mr, parameters);
+% BcFun = @(Ml, Mr) SelfPointContactNormalPressureBCs(Ml, Mr, parameters);
+BcFun = @(Ml, Mr) SelfPointContactHalfIntervalBCs(Ml, Mr, parameters);
 
 maxPoints = 1e4;
 
@@ -111,7 +111,7 @@ parameters.Py = InterpolateToNewMesh(initSol.x, PyOld, contactSolOld.x);
 
 tMax = 5.0;
 tMin = times(end - endIndex);
-dt = 0.01;
+dt = 0.05;
 parameters.dt = dt;
 newTimes = tMin:dt:tMax;
 numSols = length(newTimes);
@@ -139,7 +139,7 @@ for i = 2:numSols
         contactSolCurrent.x = contactSols{i - 1}(1,:);
         contactSolCurrent.y = contactSols{i - 1}(2:end,:);
         
-        solGuess = ConstructNewGuess(contactSolCurrent, contactSolPrevious);
+        solGuess = ConstructNewGuessForMultiPointBVPs(contactSolCurrent, contactSolPrevious);
         
     end
     
@@ -168,10 +168,7 @@ for i = 2:numSols
     %     hold on
     %     plot(contactSolNew.y(1,:), contactSolNew.y(7,:))
     
-    contactSolOld = contactSolNew;
-    parameters.gamma = gammaNew;
-    
-    if (HasRodHitRegionContact(contactSolOld, parameters) )
+    if (HasRodHitRegionContact(contactSolNew, parameters) )
         
         contactSols = contactSols(1:(i - 1));
         newTimes = newTimes(1:(i - 1));
@@ -182,6 +179,8 @@ for i = 2:numSols
         
     end
     
+    contactSolOld = contactSolNew;
+    parameters.gamma = gammaNew;
     
 end
 
@@ -192,9 +191,10 @@ toc
 % newTimes = newTimes(1:(end - 1));
 % momentAtContact = momentAtContact(1:(end - 1));
 % foundationContactSols = foundationContactSols(1:(end - 1));
+
 %% Save the solutions
 outputDirectory = '../../../../Solutions/RemodellingFoundation/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_const_area';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_repulsion_Q_5_N_2';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'contactSols') % Solutions
 % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationContactSols') % Foundation stresses
@@ -213,31 +213,58 @@ plot(contactSols{end}(3,:), -contactSols{end}(4,:), 'k', 'linewidth', 1.5)
 plot(-contactSols{end}(3,:), -contactSols{end}(4,:), 'k', 'linewidth', 1.5)
 
 %% Let's try contact along a region now
-% parameters.Px = InterpolateToNewMesh(contactSolOld.x, PxNew, contactSolNew.x);
-% parameters.Py = InterpolateToNewMesh(contactSolOld.x, PyNew, contactSolNew.x);
+parameters.Px = InterpolateToNewMesh(contactSolOld.x, PxNew, contactSolNew.x);
+parameters.Py = InterpolateToNewMesh(contactSolOld.x, PyNew, contactSolNew.x);
 
 % initSol = contactSolNew;
-
+%
 contactSolPrevious.x = contactSols{end - 1}(1, :);
 contactSolPrevious.y = contactSols{end - 1}(2:end, :);
 
 contactSolCurrent.x = contactSols{end}(1, :);
 contactSolCurrent.y = contactSols{end}(2:end, :);
 
-initSolGuess = ConstructNewGuess(contactSolCurrent, contactSolPrevious);
+initSolGuess = ConstructNewGuessForMultiPointBVPs(contactSolCurrent, contactSolPrevious);
 
-gammaOld = parameters.gamma;
-parameters.gamma = gammaOld + (parameters.g)*(parameters.dt);
+%%
+% We will construct a three-point solution, to see if this helps bvp4c
+% solve the system.
+% splitIndex = find(contactSolOld.x == 1, 1);
+%
+% initSolGuess.x = [contactSolOld.x(1:splitIndex), [1 1.5 2], ...
+%     contactSolOld.x((splitIndex + 1):end) + 1];
+%
+% initSolGuess.y = [contactSolOld.y(:, 1:splitIndex), ...
+%                    contactSolOld.y(:, splitIndex), ...
+%                    0.5*(contactSolOld.y(:, splitIndex) + contactSolOld.y(:, (splitIndex + 1))), ...
+%                    contactSolOld.y(:, (splitIndex + 1)), ...
+%                    contactSolOld.y(:, (splitIndex + 1):end)];
+%
+% initSolGuess.y = [initSolGuess.y; 0.01*ones(1, length(initSolGuess.x))];
+%
+% initPx = parameters.Px;
+% initPy = parameters.Py;
+% parameters.Px = [initPx(1:splitIndex), initPx(splitIndex), ...
+%                 0.5*(initPx(splitIndex) + initPx(splitIndex + 1)), ...
+%                 initPx(splitIndex + 1), initPx((splitIndex + 1):end)];
+% parameters.Py = [initPy(1:splitIndex), initPy(splitIndex), ...
+%                 0.5*(initPy(splitIndex) + initPy(splitIndex + 1)), ...
+%                 initPy(splitIndex), initPy((splitIndex + 1):end)];
+
+% gammaOld = parameters.gamma;
+% parameters.gamma = gammaOld + (parameters.g)*(parameters.dt);
 %% Solve the system for contact along a region
 
 % Define the ODEs and BCs
-RegionDerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactRegionOdes(x, M, region, initSolGuess, parameters);
-% RegionDerivFun = @(x, M, region) RemodellingFoundationWithRepulsionContactRegionOdes(x, M, region, initSol, parameters);
+% RegionDerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactRegionOdes(x, M, region, initSolGuess, parameters);
+% RegionDerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactRegionThreePointOdes(x, M, region, initSolGuess, parameters);
+RegionDerivFun = @(x, M, region) RemodellingFoundationWithRepulsionContactRegionOdes(x, M, region, initSol, parameters);
 % RegionDerivFun = @(x, M, region) RemodellingFoundationContactRegionOdes(x, M, region, initSol, parameters);
 
 % Set the boundary conditions
-RegionBcFun = @(Ml, Mr) SelfPointContactRegionNormalPressureBCs(Ml, Mr, parameters);
-% RegionBcFun = @(Ml, Mr) SelfPointContactRegionBCs(Ml, Mr, parameters);
+% RegionBcFun = @(Ml, Mr) SelfPointContactRegionNormalPressureBCs(Ml, Mr, parameters);
+% RegionBcFun = @(Ml, Mr) SelfPointContactRegionNormalPressureThreePointBCs(Ml, Mr, parameters);
+RegionBcFun = @(Ml, Mr) SelfPointContactRegionBCs(Ml, Mr, parameters);
 
 maxPoints = 1e4;
 
@@ -247,7 +274,7 @@ solOptions = bvpset('RelTol', 1e-4,'AbsTol', 1e-4, 'NMax', maxPoints, 'Vectorize
 tic
 
 % Solve the system.
-contactRegionSolOld = bvp4c(RegionDerivFun, RegionBcFun, initSol, solOptions);
+contactRegionSolOld = bvp4c(RegionDerivFun, RegionBcFun, initSolGuess, solOptions);
 
 toc
 
