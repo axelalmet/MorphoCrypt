@@ -2,15 +2,10 @@ function Odes = LinearElasticFoundationOdes(x, M, MOld, parameters)
 
 K = parameters.K;
 L = parameters.L;
-etaK = parameters.etaK;
-dt = parameters.dt;
 gamma = parameters.gamma;
-Es = parameters.Es;
 Eb = parameters.Eb;
-ext = parameters.ext;
 
-mOld = MOld.y(7,:);
-uHatOld = parameters.uHat;
+uHat = parameters.uHat;
 
     function dMdS = TensionBasedGrowthEqns(x, M)
         
@@ -32,40 +27,21 @@ uHatOld = parameters.uHat;
             K = interp1(MOld.x, K, x);
         end
         
-        if (length(Es) > 1)
-            Es = interp1(MOld.x, Es, x);
-        end
-        
         if (length(Eb) > 1)
             Eb = interp1(MOld.x, Eb, x);
         end
-        
-        if (length(mOld) > 1)
-            mOld = interp1(MOld.x, mOld, x);
-        end
             
-        if (length(uHatOld) > 1)
-            uHatOld = interp1(MOld.x, uHatOld, x);
+        if (length(uHat) > 1)
+            uHat = interp1(MOld.x, uHat, x);
         end
-        
-        % If the model is extensible, set alpha to the tension, otherwise,
-        % set alpha = 1.
-        if (ext == 1)
-            alpha = 1 + (F.*cos(theta) + G.*sin(theta))./Es;
-        else
-            alpha = 1;
-        end
-        
-        % Update the intrinsic curvature
-        uHat = uHatOld + etaK*dt.*mOld./Eb;
         
         dSdS = L.*ones(1, length(S));
-        dxdS = L.*gamma.*alpha.*cos(theta);
-        dydS = L.*gamma.*alpha.*sin(theta);
+        dxdS = L.*gamma.*cos(theta);
+        dydS = L.*gamma.*sin(theta);
         dFdS = L.*K.*(X - S);
         dGdS = L.*K.*Y;
         dthetadS = L.*gamma.*(m./Eb + uHat);
-        dmdS = L.*gamma.*alpha.*(F.*sin(theta) - G.*cos(theta));
+        dmdS = L.*gamma.*(F.*sin(theta) - G.*cos(theta));
 
         dMdS = [dSdS; dxdS; dydS; dFdS; dGdS; dthetadS; dmdS];
     end

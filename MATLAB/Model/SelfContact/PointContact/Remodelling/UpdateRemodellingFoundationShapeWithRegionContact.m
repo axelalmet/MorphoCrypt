@@ -1,45 +1,70 @@
-function [SolNew, EbNew, gammaNew, PxNew, PyNew] = UpdateRemodellingFoundationShapeWithRegionContact(solOld, parameters, options)
-% Get the relevant parameters to update growth in time
-SOld = solOld.y(1,:);
-XOld = solOld.y(2,:);
-YOld = solOld.y(3,:);
+function [innerSolNew, outerSolNew, EbNew, ...
+            gammaNew, innerPxNew, innerPyNew, ...
+            outerPxNew, outerPyNew] = UpdateRemodellingFoundationShapeWithRegionContact(innerSolOld, innerParameters, outerSolOld, outerParameters, options)
+% Get the relevant parameters to update growth and the foundation shape in time
+g = innerParameters.g;
+nu = innerParameters.nu;
+dt = innerParameters.dt;
 
-g = parameters.g;
-currentArcLength = parameters.currentArcLength;
-sigma = parameters.sigma;
-nu = parameters.nu;
-dt = parameters.dt;
-b1 = parameters.b1;
+% Update the before-contact foundation
+innerXOld = innerSolOld.y(2,:);
+innerYOld = innerSolOld.y(3,:);
 
-% Define the anonymous function for Wnt
-W = parameters.W;
+innerPxOld = innerParameters.Px;
+innerPyOld = innerParameters.Py;
 
-PxOld = parameters.Px;
-PyOld = parameters.Py;
+innerPxNew = innerPxOld + dt*nu.*(innerXOld - innerPxOld);
+innerPyNew = innerPyOld + dt*nu.*(innerYOld - innerPyOld);
 
-% Update the foundation
-PxNew = PxOld + dt*nu.*(XOld - PxOld);
-PyNew = PyOld + dt*nu.*(YOld - PyOld);
+innerParameters.Px = innerPxNew;
+innerParameters.Py = innerPyNew;
 
-parameters.Px = PxNew;
-parameters.Py = PyNew;
+% Update the after-contact foundation
+outerXOld = outerSolOld.y(2,:);
+outerYOld = outerSolOld.y(3,:);
 
-% Define new gamma
-gammaOld = parameters.gamma;
+outerPxOld = outerParameters.Px;
+outerPyOld = outerParameters.Py;
+
+outerPxNew = outerPxOld + dt*nu.*(outerXOld - outerPxOld);
+outerPyNew = outerPyOld + dt*nu.*(outerYOld - outerPyOld);
+
+outerParameters.Px = outerPxNew;
+outerParameters.Py = outerPyNew;
+
+% Define new growth
+gammaOld = innerParameters.gamma;
 gammaNew = gammaOld + g*dt;
-parameters.gamma = gammaNew;
+innerParameters.gamma = gammaNew;
+outerParameters.gamma = gammaNew;
 
 % Set new bending stiffness
-% EbNew = 1 - b1.*W(SOld, sigma);
-% parameters.Eb = EbNew;
+EbNew = innerParameters.Eb;
 
-EbNew = parameters.Eb;
+% First solve the before-contact system
 
 %Define the ODes
-Odes = @(x, M, region) RemodellingFoundationWithRepulsionContactRegionOdes(x, M, region, solOld, parameters);
+InnerOdes = @(x, M) RemodellingFoundationWithRepulsionInContactRegionOdes(x, M, innerSolOld, innerParameters);
 
 % Set the boundary conditions 
-Bcs = @(Ml, Mr) SelfPointContactRegionBCs(Ml, Mr, parameters);
+InnerBcs = @(Ml, Mr) SelfPointInContactRegionBCs(Ml, Mr, innerParameters);
 
+tic
 % Define solve the ODE system using bvp4c.
-SolNew = bvp4c(Odes, Bcs, solOld, options);
+innerSolNew = bvp4c(InnerOdes, InnerBcs, innerSolOld, options);
+toc
+
+% Now solve the after-contact region, having obtained the contact point
+outerParameters.sc = innerSolNew.y(8, 1);
+outerSolOld.y(1, 1) = outerParameters.sc;
+
+%Define the ODes
+OuterOdes = @(x, M) RemodellingFoundationWithRepulsionOutContactRegionOdes(x, M, outerSolOld, outerParameters);
+
+% Set the boundary conditions 
+OuterBcs = @(Ml, Mr) SelfPointOutContactRegionBCs(Ml, Mr, outerParameters);
+
+tic
+% Define solve the ODE system using bvp4c.
+outerSolNew = bvp4c(OuterOdes, OuterBcs, outerSolOld, options);
+toc

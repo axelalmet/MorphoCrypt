@@ -10,10 +10,6 @@ dt = parameters.dt;
 t = parameters.t;
 H = parameters.H;
 T = parameters.T;
-LOld = parameters.L;
-W = parameters.W;
-currentArcLength = parameters.currentArcLength;
-sigma = parameters.sigma;
 
 % Spring stresses
 PxOld = parameters.Px;
@@ -23,6 +19,8 @@ PyOld = parameters.Py;
 gammaOld = parameters.gamma;
 gammaNew = gammaOld + g*dt;
 parameters.gamma = gammaNew;
+
+currentArcLength = parameters.currentArcLength;
 
 % Set new bending stiffness
 EbNew = parameters.Eb;
@@ -50,7 +48,18 @@ solNew = bvp4c(Odes, Bcs, solOld, options);
 AOld = parameters.A;
 ANew = 2.*AOld + dt - gammaNew./gammaOld.*AOld;
 
-LNew = LOld + dt*g/gammaOld*(-0.25*(1 + tanh(H*(t - T))) + (0.5 - LOld));
-parameters.L = LNew;
+% Update the new boundary
+sloughedAmount = trapz(0:dt:t, 0.25*g*(1 + tanh(H*((0:dt:t) - T))));
+
+splitIndex = find(solOld.x == 1, 1);
+
+% Define new functionx
+sloughLfunct = @(l) sloughedAmount - (currentArcLength(end) - ...
+    interp1(SOld([1:splitIndex, (splitIndex + 2):end]), currentArcLength([1:splitIndex, (splitIndex + 2):end]), l));
+
+LNew = fsolve(sloughLfunct, 0, optimset('Display','off'));
+
+
+
 
 

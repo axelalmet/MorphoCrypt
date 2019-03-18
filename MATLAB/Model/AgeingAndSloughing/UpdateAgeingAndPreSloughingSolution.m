@@ -9,8 +9,8 @@ sigma = parameters.sigma;
 currentArcLength = parameters.currentArcLength;
 nu = parameters.nu;
 dt = parameters.dt;
-g = parameters.g;
-b1 = parameters.b1;
+% g = parameters.g;
+% b1 = parameters.b1;
 
 % Spring stresses
 PxOld = parameters.Px;
@@ -18,8 +18,8 @@ PyOld = parameters.Py;
 
 % Define new gamma
 gammaOld = parameters.gamma;
-gammaNew = gammaOld + g*dt;
-% gammaNew = gammaOld.*(1 + dt.*W(currentArcLength, sigma));
+% gammaNew = gammaOld + g*dt;
+gammaNew = gammaOld.*(1 + dt.*W(currentArcLength, sigma));
 parameters.gamma = gammaNew;
 
 % Set new bending stiffness
@@ -35,14 +35,14 @@ PyNew = PyOld + dt*nu.*(YOld - PyOld);
 parameters.Px = PxNew;
 parameters.Py = PyNew;
 
-% Update the ages
+% % Update the ages
 AOld = parameters.A;
-% ANew = 2*AOld + dt - gammaNew./gammaOld.*AOld;
-ANew = 2*AOld + dt - W(currentArcLength, sigma).*AOld;
-
-b1 = 0.5*(1 - min(ANew)/max(ANew));
-
-EbNew = 1 - b1.*W(SOld, sigma);
+ANew = 2*AOld + dt - gammaNew./gammaOld.*AOld;
+% ANew = 2*AOld + dt - W(currentArcLength, sigma).*AOld;
+% 
+% b1 = 0.5*(1 - min(ANew)/max(ANew));
+% 
+% EbNew = 1 - b1.*W(SOld, sigma);
 parameters.Eb = EbNew;
 
 % Define the ODEs

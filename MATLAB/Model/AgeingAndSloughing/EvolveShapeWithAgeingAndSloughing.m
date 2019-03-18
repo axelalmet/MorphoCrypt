@@ -12,7 +12,7 @@ K = 12*kf*L0^4/(w*h^3);
 % K = 50;
 Es = 1; % Stretching stiffness
 b1 = 0.0; % Bending stiffness
-dt = 0.1; % Time step
+dt = 0.05; % Time step
 
 A = 0;
 H = 10;
@@ -26,7 +26,7 @@ solFromData.y = solData(:,2:end)';
 
 solFromData.y(3,:) = y0 + solFromData.y(3,:);
 
-sigma = w/L0; % "Width" of Wnt gradient
+sigma = 2*w/L0; % "Width" of Wnt gradient
 % sigma = 0.005;
 
 % % Define the Wnt function
@@ -40,7 +40,7 @@ mu3 = 0.1;
 
 g = 1;
 
-T = 2.0;
+T = 2.5;
 
 parameters.mu3 = mu3;
 parameters.g = g;
@@ -62,6 +62,7 @@ parameters.dt = dt; % Time step
 parameters.t = dt;
 parameters.H = H;
 parameters.A = A;
+parameters.As = 5.0;
 parameters.T = T;
 
 % Calculate the critical buckling stress, so that the difference in stress
@@ -94,8 +95,8 @@ trackedPoints = [0.1, 0.2, 0.4];
 SOld = solFromData.y(1,:);
 
 % Initialise growth
-firstGamma = 1 + dt*g;
-% firstGamma = 1 + dt*W(SOld, sigma);
+% firstGamma = 1 + dt*g;
+firstGamma = 1 + dt*W(SOld, sigma);
 parameters.gamma = firstGamma;
 
 parameters.Eb = 1;
@@ -128,12 +129,12 @@ initSol = numSol;
 % Update the initial data
 solOld = initSol;
 
-% Find where the tagged cells are
-taggedPositions = zeros(length(trackedPoints),2);
-for i = 1:length(trackedPoints)
-    solAtMesh = deval(initSol, solMesh, [1:3]);
-    taggedPositions(i,:) = solAtMesh(2:end, find(solAtMesh(1,:) == trackedPoints(i), 1))';
-end
+% % Find where the tagged cells are
+% taggedPositions = zeros(length(trackedPoints),2);
+% for i = 1:length(trackedPoints)
+%     solAtMesh = deval(initSol, solMesh, [1:3]);
+%     taggedPositions(i,:) = solAtMesh(2:end, find(solAtMesh(1,:) == trackedPoints(i), 1))';
+% end
 
 initS = solOld.y(1,:);
 initY = solOld.y(3,:);
@@ -144,11 +145,7 @@ parameters.A = AOld;
 parameters.t = 2*dt;
 
 gammaOld = parameters.gamma;
-parameters.currentArcLength = initS.*gammaOld;
-
-LOld = parameters.L;
-LNew = LOld + dt*g/parameters.gamma*(-0.25*(1 + tanh(H*(parameters.dt - T))) + 0.5 - LOld);
-parameters.L = LNew;
+parameters.currentArcLength = cumtrapz(initS, gammaOld);
 
 parameters.Px = initS;
 parameters.Py = dt*(parameters.nu).*initY;
@@ -174,14 +171,15 @@ flatSol.y(5:end,:) = 0.*flatSol.y(5:end,:);
 Sols{1} = [flatSol.x; flatSol.y];
 % gammaSols{1} = [L.*flatSol.x; ones(1, length(flatSol.x))];
 foundationSols{1} = [initSol.y(1,:); y0.*ones(1, length(initSol.x))];
-cellPositions{1} = taggedPositions;
+% cellPositions{1} = taggedPositions;
 
 % First non-trivial solution
-Sols{2} = [initSol.x; initSol.y];
+gammaIncremental = (gammaOld - 1)./(parameters.dt);
+Sols{2} = [initSol.x; initSol.y; gammaIncremental; parameters.A.*ones(1, length(initSol.x))];
 % gammaSols{2} = [L.*initSol.x; parameters.gamma];
 foundationSols{2} = [parameters.Px; parameters.Py];
 
-cellPositions{2} = taggedPositions;
+% cellPositions{2} = taggedPositions;
 
 tic
 
@@ -194,49 +192,45 @@ for i = 3:numSols
     [solNew, gammaNew, EbNew, KNew, PxNew, PyNew, ANew] = UpdateAgeingAndPreSloughingSolution(solOld, parameters, solOptions);
     
     % Update the solutions, gamma, and the foundation shape
-%     parameters.gamma = interp1(solOld.x, gammaNew, solNew.x);
-    parameters.gamma = gammaNew;
+    gammaOld = parameters.gamma;
+    gammaInc = (gammaNew - gammaOld)./(dt*gammaOld);
+    gammaIncremental = interp1(solOld.x, gammaInc, solNew.x);
+    
+    parameters.gamma = interp1(solOld.x, gammaNew, solNew.x);
+    %     parameters.gamma = gammaNew;
     
     parameters.Px = interp1(solOld.x, PxNew, solNew.x);
     parameters.Py = interp1(solOld.x, PyNew, solNew.x);
-       
-    parameters.A = interp1(solOld.x, ANew, solNew.x);
     
-    if (length(EbNew) > 1)
-        parameters.Eb = interp1(solOld.x, EbNew, solNew.x);
-    end
+    AOld = parameters.A;
+    AOld = interp1(solOld.x, AOld.*ones(1, length(solOld.x)), solNew.x);
+        
+    parameters.A = interp1(solOld.x, ANew.*ones(1, length(solOld)), solNew.x);
     
-    parameters.currentArcLength = solNew.y(1,:).*parameters.gamma;
+    parameters.currentArcLength = cumtrapz(solNew.y(1,:), parameters.gamma);
+    
+    sloughedAmount = trapz(solNew.y(1,:), (parameters.A > parameters.As).*(AOld.*W(parameters.currentArcLength, parameters.sigma) < 0.05));
     
     % Stop the solution if net growth drops below unity or the curve
     % self-intersects
-    %     if ( (trapz(solNew.y(1,:), gammaOld) < 1)||(~isempty(InterX([solNew.y(2,:); solNew.y(3,:)]))) )
-    if ( (~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(parameters.t >= parameters.T) ) %
+    if ( (~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(sloughedAmount > 0) ) %
         
         Sols = Sols(1:(i - 1));
-%         gammaSols = gammaSols(1:(i - 1));
         times = times(1:(i - 1));
         foundationSols = foundationSols(1:(i - 1));
-        cellPositions = cellPositions(1:(i - 1));
         
         break
     end
-
+    
     
     solOld = solNew;
     
-    Sols{i} = [solOld.x; solOld.y];
-%     gammaSols{i} = [L.*solNew.x; parameters.gamma];
-    foundationSols{i} = [parameters.Px; parameters.Py];
-    
-    % Find where the tagged cells are
-    taggedPositions = zeros(length(trackedPoints),2);
-    for j = 1:length(trackedPoints)
-        solAtMesh = deval(solOld, solMesh, [1:3]);
-        taggedPositions(j,:) = solAtMesh(2:end, find(solAtMesh(1,:) == trackedPoints(j), 1))';
+    if (length(parameters.A) > 1)
+        Sols{i} = [solOld.x; solOld.y; gammaIncremental; parameters.A];
+    else
+        Sols{i} = [solOld.x; solOld.y; gammaIncremental; parameters.A.*ones(1, length(solOld.x))];
     end
-
-    cellPositions{i} = taggedPositions;
+    foundationSols{i} = [parameters.Px; parameters.Py];
     
 end
 
@@ -255,7 +249,15 @@ AOld = parameters.A;
 gammaNew = gammaOld + g*dt;
 parameters.gamma = gammaNew;
 
-LNew = 0.5 + dt*g/(gammaOld)*(-0.25*(1 + tanh(H*((times(end) + dt) - T))) + (0.5 - LOld));
+parameters.currentArcLength = gammaNew.*solOld.y(1,:);
+
+sloughedAmount = trapz(times, 0.25*g*(1 + tanh(H*(times - T))));
+
+% Define new functionx
+sloughLfunct = @(l) sloughedAmount - (parameters.currentArcLength(end) - interp1(solOld.y(1,:), parameters.currentArcLength, l));
+
+LNew = fsolve(sloughLfunct, 0, optimset('Display','off'));
+
 parameters.L = LNew;
 
 % Initialise the times
@@ -267,13 +269,14 @@ numSols = length(newTimes);
 sloughingSols = cell(numSols, 1);
 gammaSloughingSols = cell(numSols, 1);
 foundationSloughingSols = cell(numSols, 1);
-cellSloughingPositions = cell(numSols, 1);
+% cellSloughingPositions = cell(numSols, 1);
 
 sloughSolOld.x = [solOld.x, 1 2];
 sloughSolOld.y = [solOld.y, repmat(solOld.y(:, end), [1 2])];
 
 % Need to modify the solution components individually
-sloughSolOld.y(1, (end - 2):(end - 1)) = LNew; % Impose new sloughing region
+sloughSolOld.y(1, 1:(end - 2)) = solOld.y(1, :)./(solOld.y(1, end)).*LNew;
+sloughSolOld.y(1, end - 1) = LNew; % Impose new sloughing region
 
 PxOld = parameters.Px;
 parameters.Px = [PxOld, repmat(PxOld(end), [1 2])];
@@ -283,11 +286,10 @@ parameters.Py = [PyOld, repmat(PyOld(end), [1 2])];
 
 % parameters.A = [AOld, repmat(AOld(end), [1 2])];
 
-% currentArcLengthOld = parameters.currentArcLength;
-% parameters.currentArcLength = [currentArcLengthOld, repmat(currentArcLengthOld(end), [1 2])];
-
+parameters.currentArcLength = sloughSolOld.y(1,:).*parameters.gamma;
 % parameters.gamma = [gammaOld, repmat(gammaOld(end), [1 2])];
 
+%%
 tic
 
 % Update the solutions in time
@@ -300,46 +302,43 @@ for i = 1:numSols
     
     
     % Update the solutions, gamma, and the foundation shape
-%     parameters.gamma = InterpolateToNewMesh(sloughSolOld.x, gammaNew, sloughSolNew.x);
-    parameters.gamma = gammaNew;
+    parameters.gamma = InterpolateToNewMesh(sloughSolOld.x, gammaNew, sloughSolNew.x);
+    %     parameters.gamma = gammaNew;
     parameters.Px = InterpolateToNewMesh(sloughSolOld.x, PxNew, sloughSolNew.x);
     parameters.Py = InterpolateToNewMesh(sloughSolOld.x, PyNew, sloughSolNew.x);
     parameters.L = LNew;
     parameters.A = ANew;
-%     parameters.A = InterpolateToNewMesh(sloughSolOld.x, ANew, sloughSolNew.x);
-%     parameters.currentArcLength = cumtrapz(sloughSolNew.x, parameters.gamma);
+    parameters.currentArcLength = sloughSolNew.y(1,:).*parameters.gamma;
     
     sloughSolOld = sloughSolNew;
     
     % Stop the solution if net growth drops below unity or the curve
     % self-intersects
-    %     if ( (trapz(solNew.y(1,:), gammaOld) < 1)||(~isempty(InterX([solNew.y(2,:); solNew.y(3,:)]))) )
     if ( (~isempty(InterX([sloughSolNew.y(2,:); sloughSolNew.y(3,:)])))) % Stopping criterion
         
         sloughingSols = sloughingSols(1:(i - 1));
-%         gammaSloughingSols = gammaSloughingSols(1:(i - 1));
+        %         gammaSloughingSols = gammaSloughingSols(1:(i - 1));
         newTimes = newTimes(1:(i - 1));
         foundationSloughingSols = foundationSloughingSols(1:(i - 1));
         
         break
     end
     
-    sloughingSols{i} = [sloughSolOld.x; sloughSolOld.y];
-%     gammaSloughingSols{i} = [sloughSolNew.y(1,:); parameters.gamma.*ones(1, length(sloughSolNew.x))];
+    sloughingSols{i} = [sloughSolOld.x; sloughSolOld.y; gammaIncremental; parameters.A];
     foundationSloughingSols{i} = [parameters.Px; parameters.Py];
     
-    % Find where the tagged cells are
-    taggedPositions = zeros(length(trackedPoints),2);
-    for j = 1:length(trackedPoints)
-        solAtMesh = deval(sloughSolOld, solMesh(1:end - 1), [1:3]);
-        taggedPositions(j,:) = solAtMesh(2:end, find(solAtMesh(1,:) == trackedPoints(j), 1))';
-    end
+    %     % Find where the tagged cells are
+    %     taggedPositions = zeros(length(trackedPoints),2);
+    %     for j = 1:length(trackedPoints)
+    %         solAtMesh = deval(sloughSolOld, solMesh(1:end - 1), [1:3]);
+    %         taggedPositions(j,:) = solAtMesh(2:end, find(solAtMesh(1,:) == trackedPoints(j), 1))';
+    %     end
+    %
+    %     cellSloughingPositions{i} = taggedPositions;
     
-    cellSloughingPositions{i} = taggedPositions;
-
 end
 
-toc 
+toc
 
 %%
 % sloughingSols = sloughingSols(1:(i - 1));
@@ -351,16 +350,16 @@ fullSols = [Sols; sloughingSols];
 fullGammaSols = [Sols; gammaSloughingSols];
 fullFoundationSols = [Sols; foundationSloughingSols];
 fullTimes = [times, newTimes];
-fullCellPositions = [cellPositions; cellSloughingPositions];
+% fullCellPositions = [cellPositions; cellSloughingPositions];
 
 
 %% Save the solutions
 outputDirectory = '../../Solutions/AgeingAndSloughing/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_timestepsloughing_T_2p5';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_current_sigma_w_timestepsloughing_T_2p5';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'fullSols') % Solutions
 save([outputDirectory, 'gamma_', outputValues,'.mat'], 'fullGammaSols') % Gamma
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'fullFoundationSols') % Foundation stresses
-save([outputDirectory, 'taggedcells_', outputValues,'.mat'], 'fullCellPositions') % Migrating cells
+% save([outputDirectory, 'taggedcells_', outputValues,'.mat'], 'fullCellPositions') % Migrating cells
 save([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
 save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 
@@ -383,27 +382,27 @@ for i = 2:length(fullSols)
     set(gcf, 'color', 'w');
     
     clf
-    subplot(1, 2, 1)
-    hold on
-    plot(fullTimes, parameters.g.*ones(1, length(fullTimes)), 'b', 'linewidth', 2)
-    plot(fullTimes, 0.5*(1 + tanh(parameters.H*(fullTimes - parameters.T))), 'r', 'linewidth', 2)
-    plot(fullTimes(i).*ones(1, length(0:1e-2:1.25)), 0:1e-2:1.25, 'k', 'linewidth', 2)
-    title('Growth vs death rate')
-    xlabel('time t')
-    ylim([0 1.25])
-    xlim([0 fullTimes(end)])
-    set(gca, 'linewidth', 1.5)
-
-
-    subplot(1, 2, 2)
+    %     subplot(1, 2, 1)
+    %     hold on
+    %     plot(fullTimes, parameters.g.*ones(1, length(fullTimes)), 'b', 'linewidth', 2)
+    %     plot(fullTimes, 0.25*(1 + tanh(parameters.H*(fullTimes - parameters.T))), 'r', 'linewidth', 2)
+    %     plot(fullTimes(i).*ones(1, length(0:1e-2:1.25)), 0:1e-2:1.25, 'k', 'linewidth', 2)
+    %     title('Growth vs death rate')
+    %     xlabel('time t')
+    %     ylim([0 1.25])
+    %     xlim([0 fullTimes(end)])
+    %     set(gca, 'linewidth', 1.5)
+    
+    
+    %     subplot(1, 2, 2)
     hold on
     plot(-fullSols{i}(3,:), -fullSols{i}(4,:), 'k', 'linewidth', 2)
     plot(fullSols{i}(3,:), -fullSols{i}(4,:), 'k', 'linewidth', 2)
-    for j = 1:3
-        if (fullCellPositions{i}(j,1) <= 0.5)
-            plot(fullCellPositions{i}(j, 1), -fullCellPositions{i}(j, 2), 's', 'Markersize', 15)
-        end
-    end
+    %     for j = 1:3
+    %         if (fullCellPositions{i}(j,1) <= 0.5)
+    %             plot(fullCellPositions{i}(j, 1), -fullCellPositions{i}(j, 2), 's', 'Markersize', 15)
+    %         end
+    %     end
     ylim([-1.75 0.1])
     xlim([-1 1])
     title('Rod shape')
@@ -415,9 +414,9 @@ for i = 2:length(fullSols)
     writeVideo(movieObj, currentFrame);
     
 end
-% 
+%
 % for i = 1:length(sloughingSols)
-%     
+%
 %     figure(1)
 %     clf
 %     subplot(1, 2, 1)
@@ -425,7 +424,7 @@ end
 %     plot(fullTimes, g.*ones(1, length(fullTimes)), 'b', 'linewidth', 2)
 %     plot(fullTimes, 0.5*(1 + tanh(H*(fullTimes - T))), 'r', 'linewidth', 2)
 %     plot(fullTimes(i).*(0:1e-2:1.5), 0:1e-2:1.5, 'k', 'linewidth', 2)
-%     
+%
 %     subplot(1, 2, 2)
 %     hold on
 %     plot(-sloughingSols{i}(3,:), -sloughingSols{i}(4,:), 'r', 'linewidth', 2)
@@ -433,10 +432,10 @@ end
 %     ylim([-1 0.1])
 %     xlim([-1 1])
 %     set(gca, 'linewidth', 1.5)
-%     
+%
 %     currentFrame = getframe;
 %     writeVideo(movieObj, currentFrame);
-%     
+%
 % end
 
 close(movieObj);

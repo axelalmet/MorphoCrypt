@@ -1,6 +1,6 @@
 function [SolNew, gammaNew, EbNew, KNew, PxNew, PyNew] = UpdateRemodellingFoundationSolution(solOld, solGuess, parameters, options)
 % Get the relevant parameters to update growth in time
-SOld = solOld.y(1,:);
+% SOld = solOld.y(1,:);
 XOld = solOld.y(2,:);
 YOld = solOld.y(3,:);
 FOld = solOld.y(4,:);
@@ -32,7 +32,10 @@ parameters.Px = PxNew;
 parameters.Py = PyNew;
 
 % Define new gamma
+t = parameters.t;
 gammaOld = parameters.gamma;
+
+alpha = tanh(t - 4);
 
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma) + mu3.*tanh((n3Old - n3s))));
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma) + mu3.*(n3Old - n3s)));
@@ -41,12 +44,12 @@ gammaOld = parameters.gamma;
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma).*().*(n3Old - n3s)./max(abs(n3Old) - n3s))));
 % gammaNew = gammaOld.*(1 + dt*((tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./max(abs(n3Old) - n3s))));
 % gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma) + mu3.*(n3Old - n3s)./(1 + (n3Old - n3s).^2)));
-gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma)));
-% gammaNew = gammaOld + g*dt;
+gammaNew = gammaOld.*(1 + dt*((1 - alpha)*W(currentArcLength, sigma) + alpha*0.02.*W(currentArcLength, sigma).*(n3Old - n3s)));
+gammaNew = gammaOld + g*dt;
 parameters.gamma = gammaNew;
 
 % Set new bending stiffness
-% EbNew = 1 - b1.*W(SOld, sigma);
+% EbNew = 1 - b1.*W(currentArcLength, sigma) + W(currentArcLength - sigma, 0.25*sigma);
 % parameters.Eb = EbNew;
 EbNew = parameters.Eb;
 

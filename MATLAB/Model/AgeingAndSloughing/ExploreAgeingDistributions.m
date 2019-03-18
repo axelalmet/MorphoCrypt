@@ -51,32 +51,19 @@ b = zeros(1, 401);
 
 
 for i = 1:400
-    
+%     
     gammaNew = gammaOld.*(1 + dt*W(currentS, sigma));
     currentS = cumtrapz(S, gammaNew);
     
-    ANew = AOld + dt - AOld.*(gammaNew - gammaOld)./gammaOld;
-    b(i + 1) = (max(ANew) - min(ANew))./(2*max(ANew));
-    AIncremental = (ANew - AOld)./(dt*AOld);
+    ANew = AOld + dt - 0.9*dt*W(currentS, sigma);
         
     figure(2)
     hold on
-    plot(S, ANew)
-    
-    figure(1)
-    hold on
-    plot(S, AIncremental)
+    plot(currentS, ANew)
     
     AOld = ANew;
     gammaOld = gammaNew;
 end
-
-figure
-plot(0:400, b)
-
-figure
-plot(0:400, AIncremental)
-
 %% Wnt-based growth; parametrised in the initial configuration
 AOld = zeros(1, length(S));
 gammaOld = 1;

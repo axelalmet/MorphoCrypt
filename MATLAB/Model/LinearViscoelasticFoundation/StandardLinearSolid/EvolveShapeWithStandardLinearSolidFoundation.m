@@ -32,7 +32,7 @@ W = @(S, width) exp(-((S - 0.5*L)./width).^2);
 
 eta = 24; % Define eta such that \eta^{-1} = 24 hours
 mu = 0;
-etaV = 0.01*eta;
+etaV = 0.1*eta;
 beta = 0.5;
 
 g = 1;
