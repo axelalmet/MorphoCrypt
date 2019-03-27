@@ -12,7 +12,7 @@
  DOUBLE PRECISION, INTENT(IN) :: U(NDIM), PAR(*)
  DOUBLE PRECISION, INTENT(OUT) :: F(NDIM)
  DOUBLE PRECISION, INTENT(INOUT) :: DFDU(NDIM,*), DFDP(NDIM,*)
- DOUBLE PRECISION alpha, gamma, K, L, H, S, X, Y, NX, NY, Theta, M 
+ DOUBLE PRECISION gamma, K, L, t, g, S, X, Y, NX, NY, Theta, M 
 
  ! Define the variables
  S = U(1)
@@ -24,20 +24,20 @@
  M = U(7)
 
  ! Define the parameters
- gamma = PAR(1)
+ t = PAR(1)
  K = PAR(2)
  L = PAR(3)
- H = PAR(4)
- alpha = 1.d0 + NX*DCOS(Theta) + NY*DSIN(Theta)
+ g = PAR(4)
+ gamma = 1 + g*t
 
    ! Define derivatives
    F(1) = L
-   F(2) = alpha*gamma*L*DCOS(Theta)
-   F(3) = alpha*gamma*L*DSIN(Theta)
+   F(2) = gamma*L*DCOS(Theta)
+   F(3) = gamma*L*DSIN(Theta)
    F(4) = K*L*(X - S)
    F(5) = K*L*(Y)
    F(6) = gamma*L*M
-   F(7) = alpha*gamma*L*(NX*DSIN(Theta) - NY*DCOS(Theta))
+   F(7) = gamma*L*(NX*DSIN(Theta) - NY*DCOS(Theta))
 
  END SUBROUTINE FUNC
 !----------------------------------------------------------------------
@@ -49,11 +49,20 @@
  INTEGER, INTENT(IN) :: NDIM
  DOUBLE PRECISION, INTENT(INOUT) :: U(NDIM), PAR(*)
  DOUBLE PRECISION, INTENT(IN) :: x
+ DOUBLE PRECISION L, h, w, K, f
 
-   PAR(1) = 1.d0 ! Set gamma to one 
-   PAR(2) = 50.d0 ! Set k
+ h = 15.d0
+ w = 10.d0
+ L = 125.d0
+ f = 0.01
+
+ K = f*12.d0*(L**4.d0)/(w*(h**3.d0))
+
+
+   PAR(1) = 0.d0 ! Set gamma to one 
+   PAR(2) = K ! Set k
    PAR(3) = 1.d0  ! Set L  
-   PAR(4) = 0.d0 ! Set H
+   PAR(4) = 1.d0 ! Set g
 
  END SUBROUTINE STPNT
 !----------------------------------------------------------------------
@@ -66,7 +75,7 @@
  DOUBLE PRECISION, INTENT(IN) :: PAR(*), U0(NDIM), U1(NDIM)
  DOUBLE PRECISION, INTENT(OUT) :: FB(NBC)
  DOUBLE PRECISION, INTENT(INOUT) :: DBC(NBC,*)
- DOUBLE PRECISION L, H
+ DOUBLE PRECISION L
 
  L = PAR(3)
 

@@ -11,7 +11,7 @@ y0 = 0*L;
 K = 12*kf*L0^4/(w*h^3);
 % K = 50;
 Es = 1; % Stretching stiffness
-b1 = 0.5; % Bending stiffness
+b1 = 0.9; % Bending stiffness
 dt = 0.05; % Time step
 
 % Get the initial solution from AUTO
@@ -23,7 +23,7 @@ solFromData.y = solData(:,2:end)';
 
 solFromData.y(3,:) = y0 + solFromData.y(3,:);
 
-sigma = w/L0; % "Width" of Wnt gradient
+sigma = 2*w/L0; % "Width" of Wnt gradient
 w0 = 0.0*sigma;
 % sigma = 0.005;
 
@@ -35,7 +35,7 @@ parameters.W = W;
 eta = 1.0/24; % Growth timescale (24 hours)
 etaF = eta^(-1);
 
-mu3 = 2;
+mu3 = 0.02;
 
 g = 1;
 N = 2;
@@ -93,16 +93,18 @@ n3Old = FOld.*cos(thetaOld) + GOld.*sin(thetaOld);
 
 % Mechanosensitive growth
 % firstGamma = 1 + dt*(W(SOld, sigma) + mu3.*tanh((n3Old - n3s)));
-% firstGamma = 1 + dt*(W(SOld, sigma) + mu3.*(n3Old - n3s));
-% firstGamma = 1 + dt*(W(SOld, sigma).*(1 + mu3.*tanh(n3Old - n3s)));
+% firstGamma = 1 + dt*(W(SOld, sigma) + mu3.*tanh(0.5*dt).*(n3Old - n3s));
+% firstGamma = 1 + dt*(W(SOld, sigma)/trapz(SOld, W(SOld, sigma)).*trapz(SOld, 2*(W(SOld + 1.175*sigma, sigma) + W(SOld - 1.175*sigma, sigma))));
 % firstGamma = 1 + dt*(W(SOld, sigma).*(tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./abs(max(n3Old) - min(n3Old))));
 % firstGamma = 1 + dt*((tanh(mu3*(abs(trapz(SOld, n3Old)) - n3s)).*(n3Old - n3s)./abs(max(n3Old) - min(n3Old))));
-firstGamma = 1 + dt*(W(SOld, sigma));
-% firstGamma = 1 + g*dt;
+% firstGamma = 1 + dt*(W(SOld, sigma)./trapz(SOld, W(SOld, sigma)).*trapz(SOld, W(SOld, 0.4*sigma)));
+% firstGamma = 1 + dt*(W(SOld, sigma));
+firstGamma = 1 + g*dt;
 parameters.gamma = firstGamma;
 
-% parameters.Eb = 1 - b1.*exp(-((solFromData.y(1,:))./sigma).^2);
-parameters.Eb = 1;
+parameters.Eb = 1 - b1.*exp(-((solFromData.y(1,:))./sigma).^2);
+
+% parameters.Eb = 1;
 
 % Initialise foundation shape
 parameters.Px = SOld;
@@ -136,10 +138,10 @@ initS = solOld.y(1,:);
 initY = solOld.y(3,:);
 
 % Interpolate all heterogeneous quantities to the new initial mesh
-% parameters.Eb = 1 - b1.*W(initS, sigma);
-firstGamma = interp1(solFromData.y(1,:), firstGamma, initSol.y(1,:));
-parameters.gamma = firstGamma;
-parameters.currentArcLength = cumtrapz(initS, parameters.gamma);
+parameters.Eb = 1 - b1.*W(initS, sigma);
+% firstGamma = interp1(solFromData.y(1,:), firstGamma, initSol.y(1,:));
+% parameters.gamma = firstGamma;
+parameters.currentArcLength = cumtrapz(initS, parameters.gamma.*ones(1, length(initS)));
 % parameters.currentArcLength = initS.*(parameters.gamma);
 
 parameters.Px = initS;
@@ -164,11 +166,12 @@ Sols{1} = [flatSol.x; flatSol.y; zeros(1, length(flatSol.x))];
 foundationSols{1} = [initSol.y(1,:); y0.*ones(1, length(initSol.x))];
 
 % First non-trivial solution
-gammaIncremental = (firstGamma - 1)/dt;
-Sols{2} = [initSol.x; initSol.y; gammaIncremental];
-% Sols{2} = [initSol.x; initSol.y; parameters.Eb];
+% gammaIncremental = (firstGamma - 1)/dt;
+% Sols{2} = [initSol.x; initSol.y; gammaIncremental];
+Sols{2} = [initSol.x; initSol.y; parameters.Eb];
 foundationSols{2} = [parameters.Px; parameters.Py];
 
+%%
 tic
 
 % Update the solutions in time
@@ -188,23 +191,23 @@ for i = 3:numSols
     [solNew, gammaNew, EbNew, KNew, PxNew, PyNew] = UpdateRemodellingFoundationSolution(solOld, solGuess, parameters, solOptions);
     
     %     Update the incremental growth
-    gammaOld = parameters.gamma;
-    gammaInc = (gammaNew - gammaOld)./(dt*gammaOld);
-    gammaIncremental = interp1(solOld.x, gammaInc, solNew.x);
+%     gammaOld = parameters.gamma;
+%     gammaInc = (gammaNew - gammaOld)./(dt*gammaOld);
+%     gammaIncremental = interp1(solOld.x, gammaInc, solNew.x);
     
     % Update gamma to the new mesh
-    parameters.gamma = interp1(solOld.x, gammaNew, solNew.x);
-    %     parameters.gamma = gammaNew;
+%     parameters.gamma = interp1(solOld.x, gammaNew, solNew.x);
+        parameters.gamma = gammaNew;
     
     % Update the foundation shape
     parameters.Px = interp1(solOld.x, PxNew, solNew.x);
     parameters.Py = interp1(solOld.x, PyNew, solNew.x);
     
     % Update the bending stiffness
-    %     parameters.Eb = interp1(solOld.x, EbNew, solNew.x);
+        parameters.Eb = interp1(solOld.x, EbNew, solNew.x);
     
     % Update the current arclength
-    parameters.currentArcLength = cumtrapz(solNew.y(1,:), parameters.gamma);
+    parameters.currentArcLength = cumtrapz(solNew.y(1,:), parameters.gamma.*ones(1, length(solNew.x)));
     
     % Stop the solution if the curve self-intersects
     if (HasRodHitSelfContact(solNew, parameters)||(times(i) > 7.0) )
@@ -218,33 +221,34 @@ for i = 3:numSols
     
     solOld = solNew;
     
-        Sols{i} = [solOld.x; solOld.y; gammaIncremental];
-        %     Sols{i} = [solOld.x; solOld.y; parameters.Eb];
+%         Sols{i} = [solOld.x; solOld.y; gammaIncremental];
+Sols{i} = [solOld.x; solOld.y; parameters.Eb];
     foundationSols{i} = [parameters.Px; parameters.Py];
     
 end
 
 toc
-%
+% 
+% %%
 % Sols = Sols(1:(i - 1));
 % times = times(1:(i - 1));
 % foundationSols = foundationSols(1:(i - 1));
 
-%%
-
-%%% Save the solutions
+% Save the solutions
 outputDirectory = '../../Solutions/RemodellingFoundation/';
-% outputValues = 'Eb_0p5_current_sigma_w_nu_10_kf_0p01_L0_0p125_current_sigma_w_mechanoadditivegrowth_saturatingsensitivity_w0_0';
-% outputValues = 'Eb_0p5_current_sigma_w_nu_10_kf_0p01_L0_0p125_homoggrowth';
+% outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_current_sigma_2w_mechanoswitchmultiplicativegrowth_linearsensitivity_mu3_0p02_h_10_T_1';
+% outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_current_sigma_2w_normalised_bimodal_split_2p35w';
+outputValues = 'Eb_0p9_init_sigmaE_2w_nu_10_kf_0p01_L0_0p125_homoggrowth';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % save([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationSols') % Foundation stresses
 save([outputDirectory, 'times_', outputValues, '.mat'], 'times') % Times
 save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 
+
 %% Load the solutions to check everything's worked
 outputDirectory = '../../Solutions/RemodellingFoundation/';
-outputValues = 'Eb_0p5_current_sigma_w_nu_10_kf_0p01_L0_0p125_homoggrowth';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth';
 load([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
 load([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationSols') % Foundation stresses

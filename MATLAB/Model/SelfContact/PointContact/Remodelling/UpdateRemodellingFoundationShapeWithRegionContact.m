@@ -7,8 +7,8 @@ nu = innerParameters.nu;
 dt = innerParameters.dt;
 
 % Update the before-contact foundation
-innerXOld = innerSolOld.y(2,:);
-innerYOld = innerSolOld.y(3,:);
+innerXOld = innerSolOld.y(1,:);
+innerYOld = innerSolOld.y(2,:);
 
 innerPxOld = innerParameters.Px;
 innerPyOld = innerParameters.Py;
@@ -20,8 +20,8 @@ innerParameters.Px = innerPxNew;
 innerParameters.Py = innerPyNew;
 
 % Update the after-contact foundation
-outerXOld = outerSolOld.y(2,:);
-outerYOld = outerSolOld.y(3,:);
+outerXOld = outerSolOld.y(1,:);
+outerYOld = outerSolOld.y(2,:);
 
 outerPxOld = outerParameters.Px;
 outerPyOld = outerParameters.Py;
@@ -42,27 +42,23 @@ outerParameters.gamma = gammaNew;
 EbNew = innerParameters.Eb;
 
 % First solve the before-contact system
-
+innerSolOld.y(2,:) = innerSolOld.y(2,:) + 0.1;
 %Define the ODes
 InnerOdes = @(x, M) RemodellingFoundationWithRepulsionInContactRegionOdes(x, M, innerSolOld, innerParameters);
 
 % Set the boundary conditions 
-InnerBcs = @(Ml, Mr) SelfPointInContactRegionBCs(Ml, Mr, innerParameters);
+InnerBcs = @(Ml, Mr) SelfContactInContactRegionBCs(Ml, Mr, innerParameters);
 
 tic
 % Define solve the ODE system using bvp4c.
 innerSolNew = bvp4c(InnerOdes, InnerBcs, innerSolOld, options);
 toc
 
-% Now solve the after-contact region, having obtained the contact point
-outerParameters.sc = innerSolNew.y(8, 1);
-outerSolOld.y(1, 1) = outerParameters.sc;
-
 %Define the ODes
 OuterOdes = @(x, M) RemodellingFoundationWithRepulsionOutContactRegionOdes(x, M, outerSolOld, outerParameters);
 
 % Set the boundary conditions 
-OuterBcs = @(Ml, Mr) SelfPointOutContactRegionBCs(Ml, Mr, outerParameters);
+OuterBcs = @(Ml, Mr) SelfContactOutContactRegionBCs(Ml, Mr, outerParameters);
 
 tic
 % Define solve the ODE system using bvp4c.

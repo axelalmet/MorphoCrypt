@@ -139,12 +139,12 @@ solOld = initSol;
 initS = solOld.y(1,:);
 initY = solOld.y(3,:);
 
-% gammaOld = interp1(solFromData.x, parameters.gamma, initSol.x);
+gammaOld = interp1(solFromData.x, parameters.gamma, initSol.x);
 AOld = dt;
 parameters.A = AOld;
 parameters.t = 2*dt;
 
-gammaOld = parameters.gamma;
+parameters.gamma = gammaOld;
 parameters.currentArcLength = cumtrapz(initS, gammaOld);
 
 parameters.Px = initS;
@@ -204,16 +204,14 @@ for i = 3:numSols
     
     AOld = parameters.A;
     AOld = interp1(solOld.x, AOld.*ones(1, length(solOld.x)), solNew.x);
-        
+    
     parameters.A = interp1(solOld.x, ANew.*ones(1, length(solOld)), solNew.x);
     
     parameters.currentArcLength = cumtrapz(solNew.y(1,:), parameters.gamma);
     
-    sloughedAmount = trapz(solNew.y(1,:), (parameters.A > parameters.As).*(AOld.*W(parameters.currentArcLength, parameters.sigma) < 0.05));
-    
     % Stop the solution if net growth drops below unity or the curve
     % self-intersects
-    if ( (~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(sloughedAmount > 0) ) %
+    if ( (~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(parameters.t > 4) ) %
         
         Sols = Sols(1:(i - 1));
         times = times(1:(i - 1));
@@ -236,27 +234,36 @@ end
 
 toc
 
+%% Save the solutions
+outputDirectory = '../../Solutions/AgeingAndSloughing/';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_current_sigma_2w_presloughing_A_4';
+save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
+save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationSols') % Foundation stresses
+save([outputDirectory, 'times_', outputValues, '.mat'], 'times') % Times
+save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 %% Simulate with non-zero sloughing
 
-H = parameters.H;
-T = parameters.T;
-g = parameters.g;
 dt = parameters.dt;
 LOld = parameters.L;
 gammaOld = parameters.gamma;
 AOld = parameters.A;
 
-gammaNew = gammaOld + g*dt;
+gammaNew = gammaOld.*(1 + dt*W(parameters.currentArcLength, parameters.sigma));
 parameters.gamma = gammaNew;
 
-parameters.currentArcLength = gammaNew.*solOld.y(1,:);
+ANew = 2*AOld + dt - gammaNew./gammaOld.*AOld;
+parameters.A = ANew;
 
-sloughedAmount = trapz(times, 0.25*g*(1 + tanh(H*(times - T))));
+parameters.currentArcLength = cumtrapz(solOld.y(1,:), gammaNew);
+
+sloughedAmount = trapz(solNew.y(1,:), (parameters.A > parameters.As).*(AOld.*W(parameters.currentArcLength, parameters.sigma) < 0.01));
 
 % Define new functionx
 sloughLfunct = @(l) sloughedAmount - (parameters.currentArcLength(end) - interp1(solOld.y(1,:), parameters.currentArcLength, l));
 
 LNew = fsolve(sloughLfunct, 0, optimset('Display','off'));
+
+%%
 
 parameters.L = LNew;
 
@@ -284,10 +291,11 @@ parameters.Px = [PxOld, repmat(PxOld(end), [1 2])];
 PyOld = parameters.Py;
 parameters.Py = [PyOld, repmat(PyOld(end), [1 2])];
 
-% parameters.A = [AOld, repmat(AOld(end), [1 2])];
+parameters.A = [AOld, repmat(AOld(end), [1 2])];
 
-parameters.currentArcLength = sloughSolOld.y(1,:).*parameters.gamma;
-% parameters.gamma = [gammaOld, repmat(gammaOld(end), [1 2])];
+parameters.gamma = [gammaOld, repmat(gammaOld(end), [1 2])];
+
+parameters.currentArcLength = cumtrapz(sloughSolOld.y(1,:), parameters.gamma);
 
 %%
 tic
@@ -307,8 +315,8 @@ for i = 1:numSols
     parameters.Px = InterpolateToNewMesh(sloughSolOld.x, PxNew, sloughSolNew.x);
     parameters.Py = InterpolateToNewMesh(sloughSolOld.x, PyNew, sloughSolNew.x);
     parameters.L = LNew;
-    parameters.A = ANew;
-    parameters.currentArcLength = sloughSolNew.y(1,:).*parameters.gamma;
+    parameters.A = InterpolateToNewMesh(sloughSolOld.x, ANew, sloughSolNew.x);
+    parameters.currentArcLength = cumtrapz(sloughSolNew.y(1,:), parameters.gamma);
     
     sloughSolOld = sloughSolNew;
     
@@ -371,6 +379,41 @@ load([outputDirectory, 'gamma_', outputValues,'.mat'], 'fullGammaSols') % Gamma
 load([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'fullFoundationSols') % Foundation stresses
 load([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
 load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
+
+%%
+% Calculate the sloughing boundary
+sloughingBoundaries = ones(1, length(fullTimes));
+sloughIndex = find(abs(fullTimes - parameters.T) < 1e-3);
+totalLengths = 1 + fullTimes;
+sloughedAmounts = zeros(1, length(fullTimes));
+
+for i = 2:length(sloughingBoundaries)
+    
+    currentTime = fullTimes(i);
+    Sol.x = fullSols{i}(1,:);
+    Sol.y = fullSols{i}(2:end, :);
+    sloughedAmounts(i) = trapz(0:1e-4:currentTime, 0.5*(1 + tanh(10*((0:1e-4:currentTime) - parameters.T))));
+    
+    if (i >= sloughIndex)
+        splitIndex = find(Sol.x == 1, 1);
+        sloughingBoundaries(i) = 2*Sol.y(1, splitIndex);
+    end
+    
+end
+
+figure
+hold on
+plot(fullTimes, totalLengths - sloughedAmounts)
+plot(fullTimes, sloughingBoundaries)
+plot(fullTimes, sloughedAmounts)
+
+% Save these quantities
+outputDirectory = '../../Solutions/AgeingAndSloughing/';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_timestepsloughing_T_2p5';
+save([outputDirectory, 'totallengths_', outputValues,'.mat'], 'totalLengths') % Foundation stresses
+save([outputDirectory, 'sloughingboundaries_', outputValues, '.mat'], 'sloughingBoundaries') % Times
+save([outputDirectory, 'sloughedamounts_', outputValues, '.mat'], 'sloughedAmounts') % Times
+
 %%
 movieObj =  VideoWriter('homoggrowth_rampsloughingtime_T_2p5.avi');
 movieObj.FrameRate = 15;

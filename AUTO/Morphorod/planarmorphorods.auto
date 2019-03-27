@@ -2,16 +2,16 @@
 #=======================================================
 #      			Planar Morphoelastic Rods
 #=======================================================
-fileName = 'planarmorphorodskf0p01L1Eb1'
+fileName = 'planarmorphorodskf0p01L1'
 outputDirectory = " ../Output/"
 
 print "\n***Compute the zero solution branch***"
-bvp=run(e='planarmorphorods', c='planarmorphorods', ICP=['gamma', 'K', 'Extremum'],
-			 NPR=10000, NMX=150000, UZSTOP={'gamma':2.5})
+bvp=run(e='planarmorphorods', c='planarmorphorods', ICP=['t', 'K', 'Extremum'],
+			 DS='-', NPR=1000, NMX=15000, STOP=['BP1'])
 
 bifurcationSolution = load(bvp("BP1"), IAD=3, ISW=-1, DS=1e-3, DSMAX=1e-3)
-savedBvp = run(bifurcationSolution, ICP = ['gamma', 'K', 'L', 'Extremum'], 
-				NPR=10, NMX=50, UZSTOP={'Extremum':1.5})
+savedBvp = run(bifurcationSolution, ICP = ['t', 'K', 'Extremum'], 
+				DS='-', NPR=5000, NMX=500000, UZSTOP={'Extremum':5.0})
 
 savedBvp=rl(savedBvp)
 save(savedBvp, fileName)

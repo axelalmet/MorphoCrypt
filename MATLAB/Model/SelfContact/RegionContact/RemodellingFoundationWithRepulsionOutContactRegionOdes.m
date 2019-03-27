@@ -1,4 +1,4 @@
-function Odes = RemodellingFoundationWithRepulsionOutContactRegionOdes(x, M, MOld, modelParams)
+function Odes = RemodellingFoundationWithRepulsionOutContactRegionOdes(x, M, sc, MOld, modelParams)
 
 K = modelParams.K;
 gamma = modelParams.gamma;
@@ -6,14 +6,13 @@ Eb = modelParams.Eb;
 Q = modelParams.Q;
 N = modelParams.N;
 L = modelParams.L;
-sc = modelParams.sc;
 
 xOld = MOld.x;
 
 Px = modelParams.Px;
 Py = modelParams.Py;
 
-    function dMdS = ContactEqns(x, M)
+    function dMdS = ContactEqns(x, M, sc)
         
         % Define the state variables
         S = M(1,:);
@@ -41,20 +40,20 @@ Py = modelParams.Py;
             Py = interp1(xOld, Py, x);
         end
         
-        l = L - sc;
+        l = 0.5 - sc;
         
-        dSdS = (l).*ones(1, length(S));
-        dxdS = (l).*gamma.*cos(theta);
-        dydS = (l).*gamma.*sin(theta);
-        dFdS = (l).*gamma.*(K.*(X - Px) + Q./(X - 1.01*L).^N.*(X < L));
-        dGdS = (l).*gamma.*(K.*(Y - Py));
-        dthetadS = (l).*gamma.*(m./Eb);
-        dmdS = (l).*gamma.*(F.*sin(theta) - G.*cos(theta));
+        dSdS = l.*ones(1, length(S));
+        dxdS = l.*gamma.*cos(theta);
+        dydS = l.*gamma.*sin(theta);
+        dFdS = l.*gamma.*(K.*(X - Px) + Q./(X - 1.01*L).^N.*(X < L));
+        dGdS = l.*gamma.*(K.*(Y - Py));
+        dthetadS = l.*gamma.*(m./Eb);
+        dmdS = l.*gamma.*(F.*sin(theta) - G.*cos(theta));
         
         dMdS = [dSdS; dxdS; dydS; dFdS; dGdS; dthetadS; dmdS];
         
     end
 
-Odes = ContactEqns(x, M);
+Odes = ContactEqns(x, M, sc);
 
 end

@@ -2,12 +2,12 @@
 unames={1:'S', 2:'X', 3:'Y', 4:'F', 5:'G', 6:'Theta', 7:'M'}
 
 ! Set parameter names
-parnames={1:'gamma', 2:'K', 3:'L', 4:'H', 5:'Extremum'}
+parnames={1:'t', 2:'K', 3:'L', 4:'g', 5:'Extremum'}
 
 NDIM=7, IPS=4, IRS=0, ILP=0
 ICP=['gamma', 'K', 'Extremum']
 NTST=120, NCOL=5, IAD=0, ISP=3, ISW=1, IPLT=7, NBC=7, NINT=0
 NMX=800, NPR=500, MXBF=10, IID=2, ITMX=8, ITNW=4, NWTN=3, JAC=0
 EPSL=1e-9, EPSU=1e-9, EPSS=1e-7
-DS=1e-3, DSMIN=1e-6, DSMAX=1e-3, IADS=1
+DS=1e-2, DSMIN=1e-6, DSMAX=1e-1, IADS=1
 NPAR=5, THL={}, THU={}

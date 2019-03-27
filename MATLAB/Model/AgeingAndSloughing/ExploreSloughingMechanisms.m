@@ -8,8 +8,8 @@ L0 = 1;
 L = L0;
 g = 1;
 dt = 0.05;
-T = 2.5;
-tMax = 14.0;
+T = 5;
+tMax = 20.0;
 AStar = 5;
 sigma = 10;
 times = 0:dt:tMax;
@@ -87,7 +87,9 @@ for i = 2:(length(times))
     
     t = times(i);
     
-    sloughedAmount = trapz(0:1e-2:t, 0.5*(1 + tanh(10*((0:1e-2:t) - T))) );
+    netGrowth = trapz(S, gammaOld.*W(currentS, sigma));
+    
+    sloughedAmount = trapz(0:1e-2:t, 0.5*netGrowth*(1 + tanh((10*((0:1e-2:t) - T)))));
     
     currentS = cumtrapz(S, gammaNew);
     
@@ -107,6 +109,7 @@ for i = 2:(length(times))
     
 end
 
+%%
 figure
 plot(times, newLengths, '-^')
 
@@ -146,6 +149,10 @@ for i = 2:(length(times))
     else
         newLengths(i) = 1;
     end
+    
+    figure(1)
+    hold on
+    plot(S, ANew)
     
 end
 
@@ -200,13 +207,13 @@ for j = (i + 1):length(times)
     
     currentS = cumtrapz(S, gammaOld);
     
-    figure
+    figure(1)
     hold on
-    plot(currentS, ANew)
+    plot(S, ANew)
     
 end
 
-figure
+figure(2)
 hold on
 plot(times, newLengths)
 plot(times, sloughedAmount)
