@@ -11,7 +11,7 @@ bvp=run(e='planarmorphorods', c='planarmorphorods', ICP=['t', 'K', 'Extremum'],
 
 bifurcationSolution = load(bvp("BP1"), IAD=3, ISW=-1, DS=1e-3, DSMAX=1e-3)
 savedBvp = run(bifurcationSolution, ICP = ['t', 'K', 'Extremum'], 
-				DS='-', NPR=5000, NMX=500000, UZSTOP={'Extremum':5.0})
+				DS='-', NPR=10, NMX=500, UZSTOP={'Extremum':1.5})
 
 savedBvp=rl(savedBvp)
 save(savedBvp, fileName)

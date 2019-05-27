@@ -1,7 +1,7 @@
 function EvolveShapeWithRemodellingFoundationWithoutGrowth
 % Load the solutions previously computed
 outputDirectory = '../../Solutions/RemodellingFoundation/';
-outputValues = 'Eb_1_nu_1_kf_0p01_L0_0p125_homoggrowth';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_chi_1_homoggrowth';
 
 load([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
@@ -14,14 +14,20 @@ index = find(times == timeSample, 1);
 
 % Initialise the current solution, gamma and the stresses
 initSol.x = Sols{index}(1,:);
-initSol.y = Sols{index}(2:end,:);
+initSol.y = Sols{index}(2:(end - 1),:);
 
 % initGamma = gammaSols{end - 1};
 initGamma = parameters.gamma;
 initP = foundationSols{index};
 
+parameters.uHat = Sols{index}(end, :);
+
+dt = parameters.dt;
+g = parameters.g;
+
 % parameters.gamma = initGamma(2, 1);
-parameters.gamma = 1 + timeSample*parameters.g;
+% parameters.gamma = (1 + g*dt)^(index - 1);
+parameters.gamma = 1 + g*timeSample;
 parameters.Px = initP(1,:);
 parameters.Py = initP(2,:);
 
@@ -36,9 +42,9 @@ solOptions = bvpset('RelTol', 1e-4,'AbsTol', 1e-4, 'NMax', maxPoints, 'Vectorize
 
 %% Update the stresses until self-intersection or they tend to a steady state
 
-TMax = 4.5; 
+TMax = 5.0;
 dt = parameters.dt;
-newTimes = 0:dt:TMax;
+newTimes = timeSample:dt:TMax;
 numSols = length(newTimes);
 
 SolsWithoutGrowth = cell(numSols, 1);
@@ -46,25 +52,23 @@ foundationSolsWithoutGrowth = cell(numSols, 1);
 
 solOld = initSol;
 
-SolsWithoutGrowth{1} = SolsWithoutGrowth{index};
-foundationSolsWithoutGrowth{1} = foundationSolsWithoutGrowth{index};
+SolsWithoutGrowth{1} = Sols{index};
+foundationSolsWithoutGrowth{1} = foundationSols{index};
 
+
+%%
 tic
 
 % Update the solutions in time
 for i = 2:numSols
     
     % Update the solution
-    [solNew, PxNew, PyNew] = UpdateRemodellingFoundationSolutionWithoutGrowth(solOld, parameters, solOptions);
+    [solNew, PxNew, PyNew, uHatNew] = UpdateRemodellingFoundationSolutionWithoutGrowth(solOld, parameters, solOptions);
     
-    % Update the solutions, gamma, and the spring stresses
-    PxOld = interp1(solOld.x, parameters.Px, solNew.x);
-    PyOld = interp1(solOld.x, parameters.Py, solNew.x);
-
-    % Stop the solution if net growth drops below unity or the curve
+    
     % self-intersects
-    if ( ( ~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(norm([PxNew; PyNew] - [PxOld; PyOld], 2) < 1e-4) )
-        
+    %     if ( ( ~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(norm([PxNew; PyNew] - [PxOld; PyOld], 2) < 1e-4) )
+    if (~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])) )
         SolsWithoutGrowth = SolsWithoutGrowth(1:(i - 1));
         newTimes = newTimes(1:(i - 1));
         foundationSolsWithoutGrowth = foundationSolsWithoutGrowth(1:(i - 1));
@@ -72,21 +76,30 @@ for i = 2:numSols
         break
     end
     
+    % Stop the solution if net growth drops below unity or the curve
     parameters.Px = interp1(solOld.x, PxNew, solNew.x);
     parameters.Py = interp1(solOld.x, PyNew, solNew.x);
     
+    parameters.uHat = interp1(solOld.x, uHatNew, solOld.x);
+    
     solOld = solNew;
     
-    SolsWithoutGrowth{i} = [solOld.x; solOld.y];
+    SolsWithoutGrowth{i} = [solOld.x; solOld.y; uHatNew];
     foundationSolsWithoutGrowth{i} = [parameters.Px; parameters.Py];
-        
+    
 end
 
 toc
-        
+
+%%
+% 
+% SolsWithoutGrowth = SolsWithoutGrowth(1:(i - 1));
+% newTimes = newTimes(1:(i - 1));
+% foundationSolsWithoutGrowth = foundationSolsWithoutGrowth(1:(i - 1));
+
 % Save the solutions
 outputDirectory = '../../Solutions/RemodellingFoundation/';
-outputValues = 'Eb_1_nu_1_kf_0p01_L0_0p125_relaxation';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_chi_1_relaxation_homoggrowth';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'SolsWithoutGrowth') % Solutions
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationSolsWithoutGrowth') % Foundation stresses
 save([outputDirectory, 'times_', outputValues, '.mat'], 'newTimes') % Times

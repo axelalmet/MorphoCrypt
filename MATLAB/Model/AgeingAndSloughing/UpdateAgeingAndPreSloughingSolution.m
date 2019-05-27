@@ -9,7 +9,7 @@ sigma = parameters.sigma;
 currentArcLength = parameters.currentArcLength;
 nu = parameters.nu;
 dt = parameters.dt;
-% g = parameters.g;
+g = parameters.g;
 % b1 = parameters.b1;
 
 % Spring stresses
@@ -18,8 +18,8 @@ PyOld = parameters.Py;
 
 % Define new gamma
 gammaOld = parameters.gamma;
-% gammaNew = gammaOld + g*dt;
-gammaNew = gammaOld.*(1 + dt.*W(currentArcLength, sigma));
+gammaNew = gammaOld + g*dt;
+% gammaNew = gammaOld.*(1 + dt.*W(currentArcLength, sigma));
 parameters.gamma = gammaNew;
 
 % Set new bending stiffness

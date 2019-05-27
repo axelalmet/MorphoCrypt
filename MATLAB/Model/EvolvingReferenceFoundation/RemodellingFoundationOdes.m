@@ -8,16 +8,18 @@ Eb = parameters.Eb;
 Px = parameters.Px;
 Py = parameters.Py;
 
+uHat = parameters.uHat;
+
     function dMdS = FoundationEqns(x, M)
         
         % Define the state variables
-        S = M(1,:);
-        X = M(2,:);
-        Y = M(3,:);
-        F = M(4,:);
-        G = M(5,:);
-        theta = M(6,:);
-        m = M(7,:);
+        S = M(1);
+        X = M(2);
+        Y = M(3);
+        F = M(4);
+        G = M(5);
+        theta = M(6);
+        m = M(7);
         
         if (length(gamma) > 1)
             gamma = interp1(MOld.x, gamma, x);
@@ -39,12 +41,16 @@ Py = parameters.Py;
             Py = interp1(MOld.x, Py, x);
         end
         
+        if (length(uHat) > 1)
+            uHat = interp1(MOld.x, uHat, x);
+        end
+        
         dSdS = L.*ones(1, length(S));
         dxdS = L.*gamma.*cos(theta);
         dydS = L.*gamma.*sin(theta);
         dFdS = L.*K.*gamma.*(X - Px);
         dGdS = L.*K.*gamma.*(Y - Py);
-        dthetadS = L.*gamma.*(m./Eb);
+        dthetadS = L.*gamma.*(m./Eb + uHat);
         dmdS = L.*gamma.*(F.*sin(theta) - G.*cos(theta));
 
         dMdS = [dSdS; dxdS; dydS; dFdS; dGdS; dthetadS; dmdS];

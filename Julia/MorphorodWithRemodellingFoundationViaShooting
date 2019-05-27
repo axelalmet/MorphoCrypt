@@ -1,0 +1,13 @@
+using DifferentialEquations
+using Interpolations
+
+# Import initial guess
+initSolData = readdlm("../Data/planarmorphorodsk0p02L29_sol_1")
+solMesh = initSolData[:,1]'
+initS = initSolData[:,2]'
+initX = initSolData[:,3]'
+initY = initSolData[:,4]'
+initF = initSolData[:,5]'
+initG = initSolData[:,6]'
+initTheta = initSolData[:,7]'
+initM = initSolData[:,8]'

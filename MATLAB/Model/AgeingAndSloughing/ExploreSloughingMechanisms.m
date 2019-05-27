@@ -8,7 +8,7 @@ L0 = 1;
 L = L0;
 g = 1;
 dt = 0.05;
-T = 5;
+T = 5.0;
 tMax = 20.0;
 AStar = 5;
 sigma = 10;
@@ -163,8 +163,10 @@ end
 % Define new functionx
 sloughLfunct = @(l) sloughedAmount(i) - (currentS(end) - interp1(S, currentS, l));
 
-sloughL = fsolve(sloughLfunct, 1, options);
+sloughL = fsolve(sloughLfunct, 0, options);
 newLengths(i) = sloughL;
+
+%%
 
 L = sloughL;
 
@@ -172,12 +174,14 @@ SOld = S;
 gammaPrev = gammaOld;
 APrev = AOld;
 
-S = [SOld(1:(end - 1))./(SOld(end - 1))*L, L, 1];
+S = [SOld(1:(end - 1))./(SOld(end - 1)).*L, L, 1];
 
 gammaOld = [gammaPrev(1:(end - 1)), gammaPrev((end - 1):end)];
 currentS = cumtrapz(S, gammaOld);
 
 AOld = [APrev(1:(end - 1)), APrev((end - 1):end)];
+
+LOld = L;
 
 %%
 
@@ -187,20 +191,22 @@ for j = (i + 1):length(times)
     
     ANew = 2*AOld + dt - gammaNew./gammaOld.*AOld;
     
-    sloughedAmount(j) = trapz(S, ones(1, length(S)).*(ANew > AStar).*(AOld.*W(currentS, sigma) < 0.01));
-    
-    LOld = newLengths(j - 1);
     LIndex = find(S == LOld, 1);
     
+    sloughedAmount(j) = trapz(S(1:LIndex), ones(1, length(S(1:LIndex))).* ...
+        (ANew(1:LIndex) > AStar).*(AOld(1:LIndex).*W(currentS(1:LIndex), sigma) < 0.01));
+        
     % Define function to determine new boundary
     sloughLfunct = @(l) sloughedAmount(j) - (currentS(end) ...
         - interp1(S([1:LIndex, (LIndex + 2):end]), ...
         currentS([1:LIndex, (LIndex + 2):end]), l));
     
-    sloughL = fsolve(sloughLfunct, newLengths(j - 1), options);
+    sloughL = fsolve(sloughLfunct, 0, options);
     newLengths(j) = sloughL;
     
-    S(LIndex:(LIndex + 1)) = sloughL;
+    S = [SOld(1:(LIndex))./(SOld(LIndex))*sloughL, sloughL, 1];
+    
+    LOld = sloughL;
     
     gammaOld = gammaNew;
     AOld = ANew;
@@ -217,3 +223,77 @@ figure(2)
 hold on
 plot(times, newLengths)
 plot(times, sloughedAmount)
+%% Chemical signal-driven growth, time-dependent sloughing
+% We're going to work out how much needs to be sloughed at each time to
+% balance growth.
+
+LOld = 1;
+newLengths = zeros(1, length(times));
+newLengths(1) = LOld;
+AOld = 0;
+gammaOld = 1;
+sigma = 0.16;
+
+W = @(S, width) exp(-((S)./width).^2);
+
+S = 0:1e-3:LOld;
+currentS = S;
+
+sloughedAmount = zeros(1, length(times));
+
+options = optimset('Display','off');
+
+% Iterate using derived numerical scheme for derivatives
+for i = 2:(length(times))
+    
+    gammaNew = gammaOld.*(1 + dt*W(currentS, sigma));
+    
+%     ANew = 2*AOld + dt - gammaNew./gammaOld.*AOld;
+
+    currentS = cumtrapz(S, gammaNew);
+        
+    gammaOld = gammaNew;
+%     AOld = ANew;
+    
+    if (times(i) >= T)
+        
+        break
+        
+    else
+        newLengths(i) = 1;
+    end
+    
+%     figure(1)
+%     hold on
+%     plot(S, ANew)
+    
+end
+
+%%
+
+count = i - 1;
+
+sloughingRateMagnitudes = zeros(1, length(times((count + 1):end)));
+amountGrownInNonSloughedRegion = zeros(1, length(times((count + 1):end)));
+
+while(newLengths(count) > 0)
+    
+    count = count + 1;
+    
+    gammaNew = gammaOld.*(1 + dt*W(currentS, sigma));
+    
+    currentS = cumtrapz(S, gammaNew);
+    
+        gammaOld = gammaNew;
+
+    sloughedAmountScaled = trapz(times(1:count), 0.5*(1 + tanh(10*(times(1:count) - T)))); 
+        
+    newLengths(count) = newLengths(count - 1) - 0.005;
+    
+    amountGrown = currentS(end) - interp1(S, currentS, newLengths(count));
+
+    sloughingRateMagnitudes(count - i + 1) = amountGrown./sloughedAmountScaled;
+    
+    amountGrownInNonSloughedRegion(count - i + 1) = currentS(end) - interp1(S, currentS, newLengths(count))./(1 - newLengths(count));
+end
+

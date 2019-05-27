@@ -1,7 +1,7 @@
 function EvolveStandardLinearSolidShapeWithoutGrowth
 % Load the solutions previously computed
 outputDirectory = '../../../Solutions/LinearViscoelasticFoundation/StandardLinearSolid/';
-outputValues = 'Eb_1_beta_0p25_nu_10_kf_0p01_L0_0p125_homoggrowth';
+outputValues = 'Eb_1_beta_0p75_nu_10_kf_0p01_L0_0p125_homoggrowth';
 
 load([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
@@ -47,9 +47,11 @@ solOld = initSol;
 SolsWithoutGrowth{1} = Sols{index};
 stressSolsWithoutGrowth{1} = stressSols{index};
 
+%%
+
 tic
 
-for i = 2:numSols
+for i = 77:numSols
         
     % Update the solution
     [solMeshNew, solNew, PNew] = UpdateStandardLinearSolidSolutionWithoutGrowth(solMesh, solOld, parameters, solOptions);
@@ -85,7 +87,7 @@ newTimes = newTimes(1:(i - 1));
 stressSolsWithoutGrowth = stressSolsWithoutGrowth(1:(i - 1));
         
 outputDirectory = '../../../Solutions/LinearViscoelasticFoundation/StandardLinearSolid/';
-outputValues = 'Eb_1_beta_0p25_nu_10_kf_0p01_L0_0p125_relaxation';
+outputValues = 'Eb_1_beta_0p75_nu_10_kf_0p01_L0_0p125_relaxation';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'SolsWithoutGrowth') % Solutions
 save([outputDirectory, 'stresses_', outputValues,'.mat'], 'stressSolsWithoutGrowth') % Foundation stresses
 save([outputDirectory, 'times_', outputValues, '.mat'], 'newTimes') % Times

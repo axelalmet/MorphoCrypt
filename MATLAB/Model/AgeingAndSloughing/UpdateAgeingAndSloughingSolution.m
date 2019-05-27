@@ -8,6 +8,8 @@ g = parameters.g;
 nu = parameters.nu;
 dt = parameters.dt;
 t = parameters.t;
+H = parameters.H;
+T = parameters.T;
 
 % Spring stresses
 PxOld = parameters.Px;
@@ -22,10 +24,9 @@ currentArcLength = parameters.currentArcLength;
 
 % Define new gamma
 gammaOld = parameters.gamma;
-gammaNew = gammaOld.*(1 + dt.*W(currentArcLength, sigma));
+gammaNew = gammaOld + g*dt;
+% gammaNew = gammaOld.*(1 + dt.*W(currentArcLength, sigma));
 parameters.gamma = gammaNew;
-
-currentArcLength = parameters.currentArcLength;
 
 % Set new bending stiffness
 EbNew = parameters.Eb;
@@ -55,7 +56,7 @@ ANew = 2.*AOld + dt - gammaNew./gammaOld.*AOld;
 
 % Update the new boundary
 
-sloughedAmount = trapz(solNew.y(1,:), (ANew > As).*(AOld.*W(currentArcLength, sigma) < 0.05));
+sloughedAmount = trapz(0:dt:t, 0.25.*(1 + tanh(H.*((0:dt:t) - T))));
 
 splitIndex = find(solOld.x == 1, 1);
 

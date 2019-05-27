@@ -27,16 +27,16 @@ YOld = contactSolCurrent.y(3,:);
 nu = parameters.nu;
 dt = parameters.dt;
 
-PxOld = parameters.Px;
-PyOld = parameters.Py;
- 
-parameters.Px = PxOld + nu*dt*(XOld - PxOld);
-parameters.Py = PyOld + nu*dt*(YOld - PyOld);
+% PxOld = parameters.Px;
+% PyOld = parameters.Py;
+%  
+% parameters.Px = PxOld + nu*dt*(XOld - PxOld);
+% parameters.Py = PyOld + nu*dt*(YOld - PyOld);
 
 % Construct the new solution
 initSol = ConstructNewGuessForMultiPointBVPs(contactSolCurrent, contactSolPrevious);
 initSol.y(8,:) = initSol.y(8,:);
-initSol.y(9,:) = 0.005.*ones(1, length(initSol.x));
+% initSol.y(9,:) = 0.005.*ones(1, length(initSol.x));
 
 %% Solve the system for contact along a region
 

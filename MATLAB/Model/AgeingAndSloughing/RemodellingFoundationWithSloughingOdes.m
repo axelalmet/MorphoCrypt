@@ -67,7 +67,7 @@ SOld = MOld.y(1, [1:contIndex, (contIndex + 2):end]);
                 l = 0.5 - L;
                 
                 dSdS = l.*ones(1, length(S));
-                dxdS = zeros(1, length(S));
+                dxdS = l.*gamma.*ones(1, length(S));
                 dydS = zeros(1, length(S));
                 dFdS = zeros(1, length(S));
                 dGdS = zeros(1, length(S));

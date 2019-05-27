@@ -95,8 +95,8 @@ trackedPoints = [0.1, 0.2, 0.4];
 SOld = solFromData.y(1,:);
 
 % Initialise growth
-% firstGamma = 1 + dt*g;
-firstGamma = 1 + dt*W(SOld, sigma);
+firstGamma = 1 + dt*g;
+% firstGamma = 1 + dt*W(SOld, sigma);
 parameters.gamma = firstGamma;
 
 parameters.Eb = 1;
@@ -104,6 +104,8 @@ parameters.Eb = 1;
 % Initialise foundation shape
 parameters.Px = SOld;
 parameters.Py = y0.*ones(1, length(solFromData.x));
+
+parameters.uHat = zeros(1, length(SOld));
 
 % Define the ODEs and BCs
 DerivFun = @(x, M) RemodellingFoundationOdes(x, M, solFromData, parameters);
@@ -129,23 +131,27 @@ initSol = numSol;
 % Update the initial data
 solOld = initSol;
 
-% % Find where the tagged cells are
-% taggedPositions = zeros(length(trackedPoints),2);
-% for i = 1:length(trackedPoints)
-%     solAtMesh = deval(initSol, solMesh, [1:3]);
-%     taggedPositions(i,:) = solAtMesh(2:end, find(solAtMesh(1,:) == trackedPoints(i), 1))';
-% end
+% Find where the tagged cells are
+taggedPositions = zeros(length(trackedPoints), 2);
+
+for i = 1:length(trackedPoints)
+    
+    taggedPositions(i,:) = [interp1(initSol.y(1,:), initSol.y(2,:), trackedPoints(i)), ...
+        interp1(initSol.y(1,:), initSol.y(3,:), trackedPoints(i))];
+    
+end
 
 initS = solOld.y(1,:);
 initY = solOld.y(3,:);
 
-gammaOld = interp1(solFromData.x, parameters.gamma, initSol.x);
+% gammaOld = interp1(solFromData.x, parameters.gamma, initSol.x);
+gammaOld = parameters.gamma;
 AOld = dt;
 parameters.A = AOld;
 parameters.t = 2*dt;
 
-parameters.gamma = gammaOld;
-parameters.currentArcLength = cumtrapz(initS, gammaOld);
+% parameters.gamma = gammaOld;
+parameters.currentArcLength = initS.*gammaOld;
 
 parameters.Px = initS;
 parameters.Py = dt*(parameters.nu).*initY;
@@ -157,7 +163,6 @@ numSols = length(times);
 
 % Initialise the solutions
 Sols = cell(numSols, 1);
-gammaSols = cell(numSols, 1);
 foundationSols = cell(numSols, 1);
 cellPositions = cell(numSols, 1);
 
@@ -171,15 +176,16 @@ flatSol.y(5:end,:) = 0.*flatSol.y(5:end,:);
 Sols{1} = [flatSol.x; flatSol.y];
 % gammaSols{1} = [L.*flatSol.x; ones(1, length(flatSol.x))];
 foundationSols{1} = [initSol.y(1,:); y0.*ones(1, length(initSol.x))];
-% cellPositions{1} = taggedPositions;
+cellPositions{1} = taggedPositions;
 
 % First non-trivial solution
-gammaIncremental = (gammaOld - 1)./(parameters.dt);
-Sols{2} = [initSol.x; initSol.y; gammaIncremental; parameters.A.*ones(1, length(initSol.x))];
+% gammaIncremental = (gammaOld - 1)./(parameters.dt);
+% Sols{2} = [initSol.x; initSol.y; gammaIncremental; parameters.A.*ones(1, length(initSol.x))];
+Sols{2} = [initSol.x; initSol.y];
 % gammaSols{2} = [L.*initSol.x; parameters.gamma];
 foundationSols{2} = [parameters.Px; parameters.Py];
 
-% cellPositions{2} = taggedPositions;
+cellPositions{2} = taggedPositions;
 
 tic
 
@@ -192,26 +198,28 @@ for i = 3:numSols
     [solNew, gammaNew, EbNew, KNew, PxNew, PyNew, ANew] = UpdateAgeingAndPreSloughingSolution(solOld, parameters, solOptions);
     
     % Update the solutions, gamma, and the foundation shape
-    gammaOld = parameters.gamma;
-    gammaInc = (gammaNew - gammaOld)./(dt*gammaOld);
-    gammaIncremental = interp1(solOld.x, gammaInc, solNew.x);
+%     gammaOld = parameters.gamma;
+%     gammaInc = (gammaNew - gammaOld)./(dt*gammaOld);
+%     gammaIncremental = interp1(solOld.x, gammaInc, solNew.x);
     
-    parameters.gamma = interp1(solOld.x, gammaNew, solNew.x);
-    %     parameters.gamma = gammaNew;
+%     parameters.gamma = interp1(solOld.x, gammaNew, solNew.x);
+        parameters.gamma = gammaNew;
     
     parameters.Px = interp1(solOld.x, PxNew, solNew.x);
     parameters.Py = interp1(solOld.x, PyNew, solNew.x);
     
     AOld = parameters.A;
-    AOld = interp1(solOld.x, AOld.*ones(1, length(solOld.x)), solNew.x);
+    %     AOld = interp1(solOld.x, AOld.*ones(1, length(solOld.x)), solNew.x);
     
-    parameters.A = interp1(solOld.x, ANew.*ones(1, length(solOld)), solNew.x);
+    %     parameters.A = interp1(solOld.x, ANew.*ones(1, length(solOld)), solNew.x);
+    parameters.A = ANew;
     
-    parameters.currentArcLength = cumtrapz(solNew.y(1,:), parameters.gamma);
+    %     parameters.currentArcLength = cumtrapz(solNew.y(1,:), parameters.gamma);
+    parameters.currentArcLength = solNew.y(1,:).*parameters.gamma;
     
     % Stop the solution if net growth drops below unity or the curve
     % self-intersects
-    if ( (~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(parameters.t > 4) ) %
+    if ( (~isempty(InterX([solNew.y(2,:); solNew.y(3,:)])))||(parameters.t > 2.5) ) %
         
         Sols = Sols(1:(i - 1));
         times = times(1:(i - 1));
@@ -220,14 +228,28 @@ for i = 3:numSols
         break
     end
     
+    % Track the positions
+    taggedPositions = zeros(length(trackedPoints), 2);
+    
+    for j = 1:length(trackedPoints)
+        
+        taggedPositions(j,:) = [interp1(solNew.y(1,:), solNew.y(2,:), trackedPoints(j)), ...
+            interp1(solNew.y(1,:), solNew.y(3,:), trackedPoints(j))];
+        
+    end
+    
+    cellPositions{i} = taggedPositions;
+    
     
     solOld = solNew;
     
-    if (length(parameters.A) > 1)
-        Sols{i} = [solOld.x; solOld.y; gammaIncremental; parameters.A];
-    else
-        Sols{i} = [solOld.x; solOld.y; gammaIncremental; parameters.A.*ones(1, length(solOld.x))];
-    end
+    Sols{i} = [solOld.x; solOld.y];
+        
+%     if (length(parameters.A) > 1)
+%         Sols{i} = [solOld.x; solOld.y; gammaIncremental; parameters.A];
+%     else
+%         Sols{i} = [solOld.x; solOld.y; gammaIncremental; parameters.A.*ones(1, length(solOld.x))];
+%     end
     foundationSols{i} = [parameters.Px; parameters.Py];
     
 end
@@ -236,7 +258,7 @@ toc
 
 %% Save the solutions
 outputDirectory = '../../Solutions/AgeingAndSloughing/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_current_sigma_2w_presloughing_A_4';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_T_2p5_presloughing';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationSols') % Foundation stresses
 save([outputDirectory, 'times_', outputValues, '.mat'], 'times') % Times
@@ -244,19 +266,21 @@ save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Tim
 %% Simulate with non-zero sloughing
 
 dt = parameters.dt;
+g = parameters.g;
 LOld = parameters.L;
 gammaOld = parameters.gamma;
 AOld = parameters.A;
 
-gammaNew = gammaOld.*(1 + dt*W(parameters.currentArcLength, parameters.sigma));
+% gammaNew = gammaOld.*(1 + dt*W(parameters.currentArcLength, parameters.sigma));
+gammaNew = gammaOld + g*dt;
 parameters.gamma = gammaNew;
 
 ANew = 2*AOld + dt - gammaNew./gammaOld.*AOld;
 parameters.A = ANew;
 
-parameters.currentArcLength = cumtrapz(solOld.y(1,:), gammaNew);
+parameters.currentArcLength = solOld.y(1,:).*gammaNew;
 
-sloughedAmount = trapz(solNew.y(1,:), (parameters.A > parameters.As).*(AOld.*W(parameters.currentArcLength, parameters.sigma) < 0.01));
+sloughedAmount = trapz(0:dt:parameters.t, 0.25.*(1 + tanh(H*((0:dt:parameters.t) - parameters.T))));
 
 % Define new functionx
 sloughLfunct = @(l) sloughedAmount - (parameters.currentArcLength(end) - interp1(solOld.y(1,:), parameters.currentArcLength, l));
@@ -274,9 +298,8 @@ numSols = length(newTimes);
 
 % Initialise new solution structures
 sloughingSols = cell(numSols, 1);
-gammaSloughingSols = cell(numSols, 1);
 foundationSloughingSols = cell(numSols, 1);
-% cellSloughingPositions = cell(numSols, 1);
+cellSloughingPositions = cell(numSols, 1);
 
 sloughSolOld.x = [solOld.x, 1 2];
 sloughSolOld.y = [solOld.y, repmat(solOld.y(:, end), [1 2])];
@@ -291,17 +314,17 @@ parameters.Px = [PxOld, repmat(PxOld(end), [1 2])];
 PyOld = parameters.Py;
 parameters.Py = [PyOld, repmat(PyOld(end), [1 2])];
 
-parameters.A = [AOld, repmat(AOld(end), [1 2])];
+% parameters.A = [AOld, repmat(AOld(end), [1 2])];
 
-parameters.gamma = [gammaOld, repmat(gammaOld(end), [1 2])];
+% parameters.gamma = [gammaOld, repmat(gammaOld(end), [1 2])];
 
-parameters.currentArcLength = cumtrapz(sloughSolOld.y(1,:), parameters.gamma);
+parameters.currentArcLength = sloughSolOld.y(1,:).*parameters.gamma;
 
 %%
 tic
 
 % Update the solutions in time
-for i = 1:numSols
+for i = 84:numSols
     
     parameters.t = newTimes(i);
     
@@ -310,13 +333,15 @@ for i = 1:numSols
     
     
     % Update the solutions, gamma, and the foundation shape
-    parameters.gamma = InterpolateToNewMesh(sloughSolOld.x, gammaNew, sloughSolNew.x);
-    %     parameters.gamma = gammaNew;
+%     parameters.gamma = InterpolateToNewMesh(sloughSolOld.x, gammaNew, sloughSolNew.x);
+        parameters.gamma = gammaNew;
     parameters.Px = InterpolateToNewMesh(sloughSolOld.x, PxNew, sloughSolNew.x);
     parameters.Py = InterpolateToNewMesh(sloughSolOld.x, PyNew, sloughSolNew.x);
     parameters.L = LNew;
-    parameters.A = InterpolateToNewMesh(sloughSolOld.x, ANew, sloughSolNew.x);
-    parameters.currentArcLength = cumtrapz(sloughSolNew.y(1,:), parameters.gamma);
+%     parameters.A = InterpolateToNewMesh(sloughSolOld.x, ANew, sloughSolNew.x);
+    parameters.A = ANew;
+        parameters.currentArcLength = sloughSolNew.y(1,:).*parameters.gamma;
+%     parameters.currentArcLength = cumtrapz(sloughSolNew.y(1,:), parameters.gamma);
     
     sloughSolOld = sloughSolNew;
     
@@ -332,17 +357,20 @@ for i = 1:numSols
         break
     end
     
-    sloughingSols{i} = [sloughSolOld.x; sloughSolOld.y; gammaIncremental; parameters.A];
+    sloughingSols{i} = [sloughSolOld.x; sloughSolOld.y];
     foundationSloughingSols{i} = [parameters.Px; parameters.Py];
     
-    %     % Find where the tagged cells are
-    %     taggedPositions = zeros(length(trackedPoints),2);
-    %     for j = 1:length(trackedPoints)
-    %         solAtMesh = deval(sloughSolOld, solMesh(1:end - 1), [1:3]);
-    %         taggedPositions(j,:) = solAtMesh(2:end, find(solAtMesh(1,:) == trackedPoints(j), 1))';
-    %     end
-    %
-    %     cellSloughingPositions{i} = taggedPositions;
+    splitIndex = find(sloughSolOld.x == 1, 1);
+    % Find where the tagged cells are
+    taggedPositions = zeros(length(trackedPoints),2);
+    for j = 1:length(trackedPoints)
+        taggedPositions(j,:) = [interp1(sloughSolOld.y(1, [1:splitIndex, (splitIndex + 2):end]), ...
+            sloughSolOld.y(2, [1:splitIndex, (splitIndex + 2):end]), trackedPoints(j)), ...
+            interp1(sloughSolOld.y(1, [1:splitIndex, (splitIndex + 2):end]), ...
+            sloughSolOld.y(3, [1:splitIndex, (splitIndex + 2):end]), trackedPoints(j))];
+    end
+    
+    cellSloughingPositions{i} = taggedPositions;
     
 end
 
@@ -355,19 +383,21 @@ toc
 % foundationSloughingSols = foundationSloughingSols(1:(i - 1));
 
 fullSols = [Sols; sloughingSols];
-fullGammaSols = [Sols; gammaSloughingSols];
-fullFoundationSols = [Sols; foundationSloughingSols];
+% fullGammaSols = [Sols; gammaSloughingSols];
+fullFoundationSols = [foundationSols; foundationSloughingSols];
 fullTimes = [times, newTimes];
-% fullCellPositions = [cellPositions; cellSloughingPositions];
+
+cellPositions = cellPositions(1:length(Sols));
+fullCellPositions = [cellPositions; cellSloughingPositions];
 
 
 %% Save the solutions
 outputDirectory = '../../Solutions/AgeingAndSloughing/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_current_sigma_w_timestepsloughing_T_2p5';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_timestepsloughing_T_2p5';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'fullSols') % Solutions
-save([outputDirectory, 'gamma_', outputValues,'.mat'], 'fullGammaSols') % Gamma
+% save([outputDirectory, 'gamma_', outputValues,'.mat'], 'fullGammaSols') % Gamma
 save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'fullFoundationSols') % Foundation stresses
-% save([outputDirectory, 'taggedcells_', outputValues,'.mat'], 'fullCellPositions') % Migrating cells
+save([outputDirectory, 'taggedcells_', outputValues,'.mat'], 'fullCellPositions') % Migrating cells
 save([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
 save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 
@@ -377,6 +407,7 @@ outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_timestepsloughing_T_2p5'
 load([outputDirectory, 'sols_', outputValues, '.mat'], 'fullSols') % Solutions
 load([outputDirectory, 'gamma_', outputValues,'.mat'], 'fullGammaSols') % Gamma
 load([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'fullFoundationSols') % Foundation stresses
+load([outputDirectory, 'taggedcells_', outputValues,'.mat'], 'fullCellPositions') % Foundation stresses
 load([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
 load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 
@@ -415,7 +446,7 @@ save([outputDirectory, 'sloughingboundaries_', outputValues, '.mat'], 'sloughing
 save([outputDirectory, 'sloughedamounts_', outputValues, '.mat'], 'sloughedAmounts') % Times
 
 %%
-movieObj =  VideoWriter('homoggrowth_rampsloughingtime_T_2p5.avi');
+movieObj =  VideoWriter('homoggrowth_rampsloughingtime_T_2p5_fullinterval.avi');
 movieObj.FrameRate = 15;
 open(movieObj);
 
@@ -441,11 +472,11 @@ for i = 2:length(fullSols)
     hold on
     plot(-fullSols{i}(3,:), -fullSols{i}(4,:), 'k', 'linewidth', 2)
     plot(fullSols{i}(3,:), -fullSols{i}(4,:), 'k', 'linewidth', 2)
-    %     for j = 1:3
-    %         if (fullCellPositions{i}(j,1) <= 0.5)
-    %             plot(fullCellPositions{i}(j, 1), -fullCellPositions{i}(j, 2), 's', 'Markersize', 15)
-    %         end
-    %     end
+        for j = 1:3
+%             if (fullCellPositions{i}(j,1) < 0.5)
+            plot(fullCellPositions{i}(j, 1), -fullCellPositions{i}(j, 2), 's', 'Markersize', 15)
+%             end
+        end
     ylim([-1.75 0.1])
     xlim([-1 1])
     title('Rod shape')
@@ -481,4 +512,4 @@ end
 %
 % end
 
-close(movieObj);
+% close(movieObj);

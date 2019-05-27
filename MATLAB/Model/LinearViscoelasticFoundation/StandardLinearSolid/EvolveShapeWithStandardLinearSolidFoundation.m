@@ -6,14 +6,14 @@ w = 0.01; % Width of the rod cross section
 L0 = 0.125; % Dimensional length of the rod
 % L = 2*sqrt(3)*L0/h; %Dimensionless length
 L = 1;
-y0  = 6*L;
+y0  = 0*L;
 % K = kf*h/(12*w); % Dimensionless foundation stiffness
 K = 12*kf*L0^4/(w*h^3);
 l = 12*L0^4/(w*h^3);
 n3s = 0; % Target axial tension
 Es = 1; % Stretching stiffness
 b1 = 0.0; % Bending stiffness
-dt = 5*1e-2; % Time step
+dt = 1e-2; % Time step
 
 % Get the initial solution from AUTO
 solData = load('../../../../Data/planarmorphorodsinextkf0p01L1sol_1'); %
@@ -33,7 +33,7 @@ W = @(S, width) exp(-((S - 0.5*L)./width).^2);
 eta = 24; % Define eta such that \eta^{-1} = 24 hours
 mu = 0;
 etaV = 0.1*eta;
-beta = 0.5;
+beta = 1;
 
 g = 1;
 
@@ -200,15 +200,15 @@ end
 
 toc
 
-%%
-Sols = Sols(1:21);
-%    gammaSols = gammaSols(1:(i - 1));
-times = times(1:21);
-stressSols = stressSols(1:21);
+% %%
+% Sols = Sols(1:21);
+% %    gammaSols = gammaSols(1:(i - 1));
+% times = times(1:21);
+% stressSols = stressSols(1:21);
 
 % Save the solutions
 outputDirectory = '../../../Solutions/LinearViscoelasticFoundation/StandardLinearSolid/';
-outputValues = 'Eb_1_beta_0p5_nu_1_kf_0p01_L0_0p125_homoggrowth';
+outputValues = 'Eb_1_beta_1_nu_10_kf_0p01_L0_0p125_homoggrowth';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % save([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
 save([outputDirectory, 'stresses_', outputValues,'.mat'], 'stressSols') % Foundation stresses
