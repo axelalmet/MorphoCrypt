@@ -7,13 +7,13 @@ dt = 1;
 
 times = 0:dt:tMax;
 
-W = @(S, width) exp(-((S - 0.5*S(end))./width).^2);
+W = @(S, width) exp(-((S)./width).^2);
 
 initArcLength = 0:1e-2:1;
 currentArcLength = initArcLength;
 initGamma = 1;
 
-sigma = 10/125;
+sigma = 2*10/125;
 %% Let's first test Wnt-only signalling, where Wnt is parametrised by S0
 
 gammaOld = initGamma;

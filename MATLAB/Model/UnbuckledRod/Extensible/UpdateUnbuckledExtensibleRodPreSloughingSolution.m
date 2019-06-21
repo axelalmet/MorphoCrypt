@@ -1,34 +1,34 @@
-function [SolNew, gammaNew, KNew, PNew, VNew] = UpdateUnbuckledExtensibleRodPreSloughingSolution(solOld, parameters, options)
+function [SolNew, gammaNew, KNew, PNew, VNew, ANew] = UpdateUnbuckledExtensibleRodPreSloughingSolution(solOld, parameters, options)
 % Get the relevant parameters to update growth in time
-XOld = solOld.y(1,:);
+XOld = solOld.y(2,:);
+nOld = solOld.y(3,:);
+
+AOld = parameters.A;
 
 W = parameters.W;
 sigma = parameters.sigma;
 nu = parameters.nu;
-g = parameters.g;
 dt = parameters.dt;
-
+mu = parameters.mu;
+ns = parameters.ns;
 
 % Update growth
 gammaOld = parameters.gamma;
-gammaNew = gammaOld.*(1 + dt*W(solOld.y(1,:), sigma));
-% gammaNew = gammaOld*(1 + g*dt);
-% gammaNew = gammaOld.*(1 + dt*(g + mu*nxOld));
-% gammaNew = gammaOld + g*dt;
+gammaNew = gammaOld.*(1 + dt*(W(XOld, sigma) + mu*W(XOld, sigma).*(nOld - ns).*(nOld < ns)));
 parameters.gamma = gammaNew;
 
 % Set new foundation stiffness
 KNew = parameters.K;
 
 % Set the new velocity
-VNew = cumtrapz(solOld.x, gammaOld.*W(XOld, sigma));
+VNew = cumtrapz(solOld.x, (gammaNew - gammaOld)./(dt));
 
 % Define the ODEs
-Odes = @(x, M) UnbuckledExtensibleRodWithRemodellingFoundationOdes(x, M, solOld, parameters);
+Odes = @(x, M) UnbuckledExtensibleRodWithRemodellingFoundationPreSloughingOdes(x, M, solOld, parameters);
 
 % Define the BCs
-% Bcs = @(Ml, Mr) UnbuckledExtensibleRodClampedBCs(Ml, Mr, parameters); 
-Bcs = @(Ml, Mr) UnbuckledExtensibleRodSpringBCs(Ml, Mr, parameters); 
+Bcs = @(Ml, Mr) UnbuckledExtensibleRodPreSloughingClampedBCs(Ml, Mr, parameters); 
+% Bcs = @(Ml, Mr) UnbuckledExtensibleRodSpringBCs(Ml, Mr, parameters); 
 
 % Define solve the ODE system using bvp4c.
 Sol = bvp4c(Odes, Bcs, solOld, options);
@@ -40,3 +40,6 @@ POld = parameters.P;
 
 % Update the foundation shape
 PNew = POld + dt*nu.*(XOld - POld);
+
+% Update the age
+ANew = 2*AOld + dt - (gammaNew./gammaOld).*AOld;

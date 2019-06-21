@@ -1,0 +1,211 @@
+function EvolveShapeWithUnbuckledExtensibleRodWithSloughing
+% Set the parameters
+kf = 0.01; % Dimensional foundational stiffness
+h = 0.015; % Thickness of the rod cross section
+w = 0.01; % Width of the rod cross section
+L0 = 0.125; % Dimensional length of the rod
+L = 1;
+K = 12*kf*L0^4/(w*h^3);
+dt = 0.025; % Time step
+Es = 1; % stretching stiffness
+
+% Get the initial solution from AUTO
+solData = load('../../../../Data/planarmorphorodsinextkf0p01L1sol_1');
+% solData = load('../../../Data/seashellsK50L1sol_1');
+
+solFromData.x = solData(:,1)';
+solFromData.y = solData(:,[1, 2, 5])';
+
+% % Define the Wnt function
+W = @(S, width) exp(-((S - S(1))./width).^2);
+
+parameters.W = W;
+
+eta = 1.0/24; % Growth timescale (24 hours)
+etaF = eta^(-1);
+
+g = 1;
+mu = 10;
+ns = -0.5;
+
+parameters.mu = mu;
+parameters.g = g;
+parameters.currentArcLength = solFromData.y(1,:);
+% parameters.K = K;% Foundation stiffness
+parameters.K = 1000;
+parameters.ns = ns;
+parameters.L = L; % Rod length
+parameters.nu = 10*etaF*eta; % Foundation relaxation timescale
+parameters.dt = dt; % Time step
+parameters.Es = Es;
+parameters.Ks = Es;
+
+sigma = 2*w/L0;
+parameters.sigma = sigma;
+
+% Positions we're going to track
+trackedPoints = [0.1, 0.2, 0.4, 0.6];
+
+% Iterate over different thresholds
+etaValues = [0.01, 0.05, 0.1, 0.5];
+etaValueNames = {'0p01', '0p05', '0p1', '0p5'};
+
+AsValues = [1.0, 2.5, 5.0];
+AsValueNames = {'1', '2p5', '5'};
+
+for j = 1:length(eta)
+    eta = etaValues(j);
+    parameters.eta = eta;
+    
+    for k = 1:length(AsValues)
+        
+        % Reset the length parameter (this is important!)
+        parameters.L = 1;
+        
+        As = AsValues(k);
+        parameters.As = As;
+        
+        % Solve the initial bvp to obtain a structure for the first solution.
+        SOld = solFromData.y(1,:);
+        
+        % Initialise growth
+        firstGamma = 1 + dt*(W(SOld, sigma));
+        parameters.gamma = firstGamma;
+        
+        solFromData.y(3,:) = (1 - firstGamma)./firstGamma;
+        
+        % Initialise foundation shape
+        parameters.P = SOld;
+        
+        
+        %  Define the ODEs and BCs
+        DerivFun = @(x, M) UnbuckledExtensibleRodWithRemodellingFoundationAndSloughingOdes(x, M, solFromData, parameters);
+        
+        % Set the boundary conditions
+        BcFun = @(Ml, Mr) UnbuckledExtensibleRodClampedBCsWithSloughing(Ml, Mr, parameters);
+        maxPoints = 1e6;
+        
+        tic
+        % Set the tolerances and max. number of mesh points
+        solOptions = bvpset('RelTol', 1e-4,'AbsTol', 1e-4, 'NMax', maxPoints, 'Vectorized', 'On');
+        
+        % Solve the system.
+        initSol = bvp4c(DerivFun, BcFun, solFromData, solOptions);
+        
+        toc
+                        
+        % Update the initial data
+        POld = interp1(solFromData.x, parameters.P, initSol.x);
+        XOld = initSol.y(1,:);
+        parameters.P = POld + parameters.dt*parameters.nu.*(XOld - POld);
+        
+        parameters.gamma = interp1(solFromData.x, parameters.gamma, initSol.x);
+        
+        parameters.Vg = cumtrapz(initSol.x, (parameters.gamma - 1)./dt);
+        parameters.Vc = cumtrapz(initSol.x, (XOld - initSol.x)./dt);
+        
+        parameters.A = dt.*ones(1, length(initSol.x));
+        
+        TMax = 5.0;
+        times = 0:dt:TMax;
+        numSols = length(times);
+        
+        % Initialise the solutions
+        Sols = cell(numSols, 1);
+        taggedPositions = cell(numSols, 1);
+        
+        % Find where the tagged cells are
+        trackedPositions = zeros(length(trackedPoints),2);
+        for m = 1:length(trackedPoints)
+            trackedPositions(m,:) = interp1(initSol.y(1,:), initSol.y(2, :), trackedPoints(m));
+        end
+        taggedPositions{1} = trackedPositions;
+        
+        % Initialise the new solution
+        sloughSolOld = initSol;
+        
+        % First non-trivial solution
+        Sols{1} = [initSol.x; initSol.y; parameters.P; parameters.gamma.*ones(1, length(initSol.x));...
+            (parameters.gamma - 1)./dt.*ones(1, length(initSol.x)); parameters.Vg; parameters.Vc; parameters.L.*ones(1, length(initSol.x)); parameters.A];
+        
+        % Iterate over the new solutions
+        tic
+        for i = 1:numSols
+            
+            % Update the solution
+            [sloughSolNew, gammaNew, LNew, KNew, PNew, VgNew, ANew] = UpdateUnbuckledExtensibleRodWithSloughingSolution(sloughSolOld, parameters, solOptions);
+            
+            % Update the incremental growth
+            gammaOld = parameters.gamma;
+            gammaInc = (gammaNew - gammaOld)./(dt*gammaOld);
+            gammaIncremental = interp1(sloughSolOld.x, gammaInc, sloughSolNew.x);
+            
+            % Update gamma to the new mesh
+            parameters.gamma = interp1(sloughSolOld.x, gammaNew, sloughSolNew.x);
+            
+            % Update the foundation shape
+            parameters.P = interp1(sloughSolOld.x, PNew, sloughSolNew.x);
+            
+            % Update the growth velocity
+            parameters.Vg = interp1(sloughSolOld.x, VgNew, sloughSolNew.x);
+            
+            % Update the current velocity
+            parameters.Vc = (sloughSolNew.y(1,:) - interp1(sloughSolOld.x, sloughSolOld.y(1,:), sloughSolNew.x))./dt;
+            
+            % Update the age
+            parameters.A = interp1(sloughSolOld.x, ANew, sloughSolNew.x);
+            
+            % Update the sloughing boundary
+            parameters.L = LNew;
+            
+            if (LNew <= 0) % Stop the simulation before the sloughing boundary drops below 0
+                
+                Sols = Sols(1:(i - 1));
+                taggedPositions = taggedPositions(1:(i - 1));
+                times = times(1:(i - 1));
+                break
+                
+            end
+            
+            sloughSolOld = sloughSolNew;
+            
+            % Find where the tagged cells are
+            trackedPositions = zeros(length(trackedPoints),2);
+            
+            for m = 1:length(trackedPoints)
+                trackedPositions(m,:) = interp1(sloughSolOld.y(1,:), ...
+                    sloughSolOld.y(2, :), trackedPoints(m), 'linear', 'extrap');
+            end
+            
+            taggedPositions{i} = trackedPositions;
+            
+            % Update solution structure
+            Sols{i} = [sloughSolOld.x; sloughSolOld.y; parameters.P; parameters.gamma; ...
+                gammaIncremental; parameters.Vg; parameters.Vc; parameters.L.*ones(1, length(sloughSolOld.x)); parameters.A];
+            
+        end
+        toc
+        
+        % Save the solutions
+        outputDirectory = '../../../Solutions/UnbuckledRod/';
+        outputValues = ['Es_1_nu_10_k_1000_L0_0p125_sigma_current_2w_clampedbcs_localmechano_mu_10_ns_-0p5_sloughing_boundaryage_eta_', etaValueNames{j}, ...
+            '_As_', AsValueNames{k}];
+        save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
+        save([outputDirectory, 'times_', outputValues, '.mat'], 'times') % Times
+        save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
+        save([outputDirectory, 'trackedcells_', outputValues, '.mat'], 'taggedPositions') % Times
+    end
+end
+
+
+% %%
+% 
+% outputDirectory = '../../../Solutions/UnbuckledRod/';
+% outputValues = ['Es_1_nu_10_k_1000_L0_0p125_sigma_current_2w_clampedbcs_localmechano_mu_10_ns_-0p5_sloughing_boundaryage_eta_0p001', ...
+%     '_As_1'];
+% load([outputDirectory, 'sols_', outputValues, '.mat'], 'fullSols') % Solutions
+% load([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
+% load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
+% load([outputDirectory, 'trackedcells_', outputValues, '.mat'], 'fullTaggedPositions') % Times
+
+

@@ -156,7 +156,7 @@ BcFun = @(Ml, Mr) KellerModelHalfIntervalContactBCs(Ml, Mr, parameters);
 contactSol = bvp4c(DerivFun, BcFun, contactSolOld, solOptions);
 
 
-toc
+toc`
 
 figure(5)
 hold on

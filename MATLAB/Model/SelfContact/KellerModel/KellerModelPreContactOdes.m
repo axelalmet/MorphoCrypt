@@ -2,7 +2,7 @@ function Odes = KellerModelPreContactOdes(x, M, modelParams)
 
 P = modelParams.P;
 L = modelParams.L;
-
+    
     function dMdS = PreContactEqns(x, M)
         
         % Define the state variables
