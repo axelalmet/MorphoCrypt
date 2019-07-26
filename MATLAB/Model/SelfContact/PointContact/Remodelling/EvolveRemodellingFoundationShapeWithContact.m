@@ -1,23 +1,22 @@
 function EvolveRemodellingFoundationShapeWithContact
 % Load the solutions previously computed
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_repulsion_Q_10_N_2';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0';
 outputDirectory = '../../../../Solutions/RemodellingFoundation/';
 
 load([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
 % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
-load([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationSols') % Foundation stresses
 load([outputDirectory, 'times_', outputValues, '.mat'], 'times') % Times
 load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 
 % Initialise the current solution, gamma and the stresses
 
-endIndex = 5;
+endIndex = 7;
 solFromData.x = Sols{end - endIndex}(1,:);
-solFromData.y = Sols{end - endIndex}(2:(end - 1),:);
+solFromData.y = Sols{end - endIndex}(2:8,:);
 
 % gammaFromData = gammaSols{end - 1}(2,:);
 gammaFromData = parameters.gamma - endIndex*(parameters.g)*(parameters.dt);
-PFromData = foundationSols{end - endIndex};
+PFromData =  Sols{end - endIndex}(9:10,:);
 
 PxFromData = PFromData(1,:);
 PyFromData = PFromData(2,:);
@@ -29,7 +28,7 @@ PyFromData = PFromData(2,:);
 % Set the "Wnt" function
 parameters.W = @(x, sigma) exp(-((x)./sigma).^2);
 
-%% Construct the initial guess for bvp4c
+1%% Construct the initial guess for bvp4c
 
 % Initialise the guesses for the contact point
 possibleContactPoints = find(abs(solFromData.y(6,:) + 0.5*pi) < 5*1e-2);
@@ -46,24 +45,22 @@ A0 = AGuess(contIndex);
 
 parameters.A0 = A0;
 
+% Define the solution on the new mesh
 initSol.y = [solFromData.y(1:7, 1:contIndex), solFromData.y(1:7, contIndex:end)];
 
-initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:)))];
-% initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:))); AGuess; ...
-%     pCGuess.*ones(1, length(initSol.y(1,:)))];
+% initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:)))];
+initSol.y = [initSol.y; sCGuess.*ones(1, length(initSol.y(1,:))); AGuess; ...
+    pCGuess.*ones(1, length(initSol.y(1,:)))];
 
 initSol.x = [linspace(0, 1, length(solFromData.x(1:contIndex))), ...
     linspace(1, 2, length(solFromData.x(contIndex:end)))];
 
-initX = initSol.y(2,:);
+% Re-define the foundation on the new mesh
 initPx = PxFromData([1:contIndex,contIndex:end]);
+parameters.Px = initPx;
 
-parameters.Px = initPx + (parameters.dt)*(parameters.nu).*(initX - initPx);
-
-initY = initSol.y(3,:);
 initPy = PyFromData([1:contIndex, contIndex:end]);
-
-parameters.Py = initPy + (parameters.dt)*(parameters.nu).*(initY - initPy);
+parameters.Py = initPy;
 
 % initEb = EbFromData([1:contIndex, contIndex:end]);
 
@@ -79,13 +76,13 @@ parameters.gamma = firstGamma + (parameters.g)*(parameters.dt);
 % Solve the new contact system
 
 % Define the ODEs and BCs
-% DerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactHalfIntervalOdes(x, M, region, initSol, parameters);
-DerivFun = @(x, M, region) RemodellingFoundationContactWithRepulsionOdes(x, M, region, initSol, parameters);
+DerivFun = @(x, M, region) RemodellingFoundationNormalPressureContactHalfIntervalOdes(x, M, region, initSol, parameters);
+% DerivFun = @(x, M, region) RemodellingFoundationContactWithRepulsionOdes(x, M, region, initSol, parameters);
 % DerivFun = @(x, M, region) RemodellingFoundationContactHalfIntervalOdes(x, M, region, initSol, parameters);
 
 % Set the boundary conditions
-% BcFun = @(Ml, Mr) SelfPointContactNormalPressureBCs(Ml, Mr, parameters);
-BcFun = @(Ml, Mr) SelfPointContactHalfIntervalBCs(Ml, Mr, parameters);
+BcFun = @(Ml, Mr) SelfPointContactNormalPressureBCs(Ml, Mr, parameters);
+% BcFun = @(Ml, Mr) SelfPointContactHalfIntervalBCs(Ml, Mr, parameters);
 
 maxPoints = 1e4;
 
@@ -103,13 +100,24 @@ toc
 % EbOld = parameters.Eb;
 % parameters.Eb = InterpolateToNewMesh(initSol.x, EbOld, contactSolOld.x);
 
-PxOld = parameters.Px;
-parameters.Px = InterpolateToNewMesh(initSol.x, PxOld, contactSolOld.x);
 
-PyOld = parameters.Py;
-parameters.Py = InterpolateToNewMesh(initSol.x, PyOld, contactSolOld.x);
+% Update the foundation
+XOld = InterpolateToNewMesh(initSol.x, initSol.y(2,:), contactSolOld.x);
+PxOldOld = parameters.Px; % Weird notation but it makes things easier
+PxOld = InterpolateToNewMesh(initSol.x, PxOldOld, contactSolOld.x);
 
-tMax = 5.0;
+nu = parameters.nu;
+dt = parameters.dt;
+PxNew = PxOld + nu*dt*(XOld - PxOld);
+parametersPx = PxNew;
+
+YOld = InterpolateToNewMesh(initSol.x, initSol.y(3,:), contactSolOld.x);
+PyOldOld = parameters.Py;
+PyOld = InterpolateToNewMesh(initSol.x, PyOldOld, contactSolOld.x);
+PyNew = PyOld + nu*dt*(YOld - PyOld);
+parameters.Py = PyNew;
+
+tMax = 20.0;
 tMin = times(end - endIndex);
 dt = 0.05;
 parameters.dt = dt;
@@ -117,11 +125,8 @@ newTimes = tMin:dt:tMax;
 numSols = length(newTimes);
 momentAtContact = zeros(1, numSols);
 contactSols = cell(numSols, 1);
-foundationContactSols = cell(numSols, 1);
 
-contactSols{1} = [contactSolOld.x; contactSolOld.y];
-
-foundationContactSols{1} = [parameters.Px; parameters.Py];
+contactSols{1} = [contactSolOld.x; contactSolOld.y; parameters.Px; parameters.Py];
 
 momentAtContact(1) = contactSolOld.y(7, find(contactSolOld.x == 1, 1));
 
@@ -134,10 +139,10 @@ for i = 2:numSols
         solGuess = contactSolOld;
     else
         contactSolPrevious.x = contactSols{i - 2}(1,:);
-        contactSolPrevious.y = contactSols{i - 2}(2:end,:);
+        contactSolPrevious.y = contactSols{i - 2}(2:(end - 2),:);
         
         contactSolCurrent.x = contactSols{i - 1}(1,:);
-        contactSolCurrent.y = contactSols{i - 1}(2:end,:);
+        contactSolCurrent.y = contactSols{i - 1}(2:(end - 2),:);
         
         solGuess = ConstructNewGuessForMultiPointBVPs(contactSolCurrent, contactSolPrevious);
         
@@ -152,8 +157,7 @@ for i = 2:numSols
     parameters.Px = InterpolateToNewMesh(contactSolOld.x, PxNew, contactSolNew.x);
     parameters.Py = InterpolateToNewMesh(contactSolOld.x, PyNew, contactSolNew.x);
     
-    contactSols{i} = [contactSolNew.x; contactSolNew.y];
-    foundationContactSols{i} = [parameters.Px; parameters.Py];
+    contactSols{i} = [contactSolNew.x; contactSolNew.y; parameters.Px; parameters.Py];
     momentAtContact(i) = contactSolNew.y(7, find(contactSolNew.x == 1, 1));
     
     %     % Plot the shape
@@ -173,7 +177,6 @@ for i = 2:numSols
         contactSols = contactSols(1:(i));
         newTimes = newTimes(1:(i));
         momentAtContact = momentAtContact(1:(i));
-        foundationContactSols = foundationContactSols(1:(i));
         
         break
         
@@ -194,20 +197,20 @@ toc
 
 %% Save the solutions
 outputDirectory = '../../../../Solutions/RemodellingFoundation/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_repulsion_Q_10_N_2';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0_post_constarea';
 save([outputDirectory, 'sols_', outputValues, '.mat'], 'contactSols') % Solutions
 % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
-save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationContactSols') % Foundation stresses
+% save([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationContactSols') % Foundation stresses
 save([outputDirectory, 'times_', outputValues, '.mat'], 'newTimes') % Times
 save([outputDirectory, 'contactMoments_', outputValues,'.mat'], 'momentAtContact') % Foundation stresses
 save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 
 %% Load the solutions
 outputDirectory = '../../../../Solutions/RemodellingFoundation/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0p04_post_repulsion_Q_1_N_2';
+outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_w0_0_post';
 load([outputDirectory, 'sols_', outputValues, '.mat'], 'contactSols') % Solutions
 % load([outputDirectory, 'gamma_', outputValues,'.mat'], 'gammaSols') % Gamma
-load([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationContactSols') % Foundation stresses
+% load([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'foundationContactSols') % Foundation stresses
 load([outputDirectory, 'times_', outputValues, '.mat'], 'newTimes') % Times
 load([outputDirectory, 'contactMoments_', outputValues,'.mat'], 'momentAtContact') % Foundation stresses
 load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
@@ -225,17 +228,8 @@ plot(-contactSols{end}(3,:), -contactSols{end}(4,:), 'k', 'linewidth', 1.5)
 contactSolNew.x = contactSols{end}(1,:);
 contactSolNew.y = contactSols{end}(2:end,:);
 
-% First update the foundation
-XOld = contactSolNew.y(2,:);
-YOld = contactSolNew.y(3,:);
-nu = parameters.nu;
 dt = parameters.dt;
 
-PxOld = parameters.Px;
-PyOld = parameters.Py;
-
-parameters.Px = PxOld + nu*dt*(XOld - PxOld);
-parameters.Py = PyOld + nu*dt*(YOld - PyOld);
 
 % Split the solution back into two, before contact and after contact.
 
@@ -271,7 +265,7 @@ outerParameters.gamma = gammaOld + g*dt;
 %% Solve the system for contact along a region
 
 % Define the ODEs and BCs
-InnerRegionDerivFun = @(x, M) RemodellingFoundationWithRepulsionInContactRegionOdes(x, M, initInnerSol, innerParameters);
+InnerRegionDerivFun = @(x, M) RemodellingFoundationInContactRegionOdes(x, M, initInnerSol, innerParameters);
 
 % Set the boundary conditions
 InnerRegionBcFun = @(Ml, Mr) SelfContactInContactRegionBCs(Ml, Mr, innerParameters);

@@ -1,7 +1,7 @@
 function [SolNew, gammaNew, KNew, PNew, VNew, ANew] = UpdateUnbuckledExtensibleRodPreSloughingSolution(solOld, parameters, options)
 % Get the relevant parameters to update growth in time
-XOld = solOld.y(2,:);
-nOld = solOld.y(3,:);
+XOld = solOld.y(1,:);
+nOld = solOld.y(2,:);
 
 AOld = parameters.A;
 
@@ -24,10 +24,10 @@ KNew = parameters.K;
 VNew = cumtrapz(solOld.x, (gammaNew - gammaOld)./(dt));
 
 % Define the ODEs
-Odes = @(x, M) UnbuckledExtensibleRodWithRemodellingFoundationPreSloughingOdes(x, M, solOld, parameters);
+Odes = @(x, M) UnbuckledExtensibleRodWithRemodellingFoundationOdes(x, M, solOld, parameters);
 
 % Define the BCs
-Bcs = @(Ml, Mr) UnbuckledExtensibleRodPreSloughingClampedBCs(Ml, Mr, parameters); 
+Bcs = @(Ml, Mr) UnbuckledExtensibleRodClampedBCs(Ml, Mr, parameters); 
 % Bcs = @(Ml, Mr) UnbuckledExtensibleRodSpringBCs(Ml, Mr, parameters); 
 
 % Define solve the ODE system using bvp4c.

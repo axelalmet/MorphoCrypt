@@ -2,7 +2,7 @@
 #=======================================================
 #      			Planar Morphoelastic Rods
 #=======================================================
-fileName = 'planarmorphorodskf0p01L1'
+fileName = 'planarmorphorodskf0p15L1'
 outputDirectory = " ../Output/"
 
 print "\n***Compute the zero solution branch***"

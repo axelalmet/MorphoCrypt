@@ -18,39 +18,16 @@ nu = parameters.nu;
 g = parameters.g;
 dt = parameters.dt;
 b1 = parameters.b1;
-mu3 = parameters.mu3;
 chi = parameters.chi;
 Eb = parameters.Eb;
 
-% Spring stresses
-PxOld = parameters.Px;
-PyOld = parameters.Py;
-
-% Update the foundation shape
-PxNew = PxOld + dt*nu.*(XOld - PxOld);
-PyNew = PyOld + dt*nu.*(YOld - PyOld);
-
-parameters.Px = PxNew;
-parameters.Py = PyNew;
-
-% Update the intrinsic curvature
-uHatOld = parameters.uHat;
-uHatNew = uHatOld + chi*dt.*mOld./Eb;
-parameters.uHat = uHatNew;
-
 % Define new gamma
-% t = parameters.t;
 gammaOld = parameters.gamma;
-
-% gammaNew = gammaOld.*(1 + dt*((1 - alpha)*W(currentArcLength, sigma) + 2*alpha.*(W(currentArcLength + 1.175*sigma, sigma) + W(currentArcLength - 1.175*sigma, sigma))));
-% gammaNew = gammaOld.*(1 + dt*((1 - alpha)*W(currentArcLength, sigma) + alpha*mu3*W(currentArcLength, sigma).*(n3Old - n3s)));
-% gammaNew = gammaOld.*(1 + dt*(W(currentArcLength, sigma)./trapz(SOld, W(currentArcLength, sigma)).*trapz(SOld, 2*(W(currentArcLength + 1.175*sigma, sigma) + W(currentArcLength - 1.175*sigma, sigma)))));
-% gammaNew = gammaOld + g*dt;
 gammaNew = gammaOld*(1 + g*dt);
+% gammaNew = gammaOld.*(1 + dt*W(currentArcLength, sigma));
 parameters.gamma = gammaNew;
 
 % Set new bending stiffness
-% EbNew = 1 - b1.*W(currentArcLength, sigma);
 % EbNew = 1 - b1.*W(SOld, sigma);
 % parameters.Eb = EbNew;
 EbNew = parameters.Eb;
@@ -66,3 +43,15 @@ Bcs = @(Ml, Mr) PreSloughingBCs(Ml, Mr, parameters);
 
 % Define solve the ODE system using bvp4c.
 SolNew = bvp4c(Odes, Bcs, solOld, options);
+
+% Spring stresses
+PxOld = parameters.Px;
+PyOld = parameters.Py;
+
+% Update the foundation shape
+PxNew = PxOld + dt*nu.*(XOld - PxOld);
+PyNew = PyOld + dt*nu.*(YOld - PyOld);
+
+% Update the intrinsic curvature
+uHatOld = parameters.uHat;
+uHatNew = uHatOld + chi*dt.*mOld./Eb;

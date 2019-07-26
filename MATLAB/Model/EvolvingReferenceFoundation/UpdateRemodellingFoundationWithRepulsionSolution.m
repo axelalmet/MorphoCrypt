@@ -11,17 +11,6 @@ dt = parameters.dt;
 b1 = parameters.b1;
 W = parameters.W;
 
-% Spring stresses
-PxOld = parameters.Px;
-PyOld = parameters.Py;
-
-% Update the foundation shape
-PxNew = PxOld + dt*nu.*(XOld - PxOld);
-PyNew = PyOld + dt*nu.*(YOld - PyOld);
-
-parameters.Px = PxNew;
-parameters.Py = PyNew;
-
 % Define new gamma
 gammaOld = parameters.gamma;
 
@@ -43,3 +32,11 @@ Bcs = @(Ml, Mr) PreSloughingBCs(Ml, Mr, parameters);
 
 % Define solve the ODE system using bvp4c.
 SolNew = bvp4c(Odes, Bcs, solOld, options);
+
+% Spring stresses
+PxOld = parameters.Px;
+PyOld = parameters.Py;
+
+% Update the foundation shape
+PxNew = PxOld + dt*nu.*(XOld - PxOld);
+PyNew = PyOld + dt*nu.*(YOld - PyOld);

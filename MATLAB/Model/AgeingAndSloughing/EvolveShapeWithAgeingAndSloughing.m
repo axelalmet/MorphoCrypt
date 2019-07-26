@@ -401,115 +401,115 @@ save([outputDirectory, 'taggedcells_', outputValues,'.mat'], 'fullCellPositions'
 save([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
 save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
 
-%%
-outputDirectory = '../../Solutions/AgeingAndSloughing/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_timestepsloughing_T_2p5';
-load([outputDirectory, 'sols_', outputValues, '.mat'], 'fullSols') % Solutions
-load([outputDirectory, 'gamma_', outputValues,'.mat'], 'fullGammaSols') % Gamma
-load([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'fullFoundationSols') % Foundation stresses
-load([outputDirectory, 'taggedcells_', outputValues,'.mat'], 'fullCellPositions') % Foundation stresses
-load([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
-load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
-
-%%
-% Calculate the sloughing boundary
-sloughingBoundaries = ones(1, length(fullTimes));
-sloughIndex = find(abs(fullTimes - parameters.T) < 1e-3);
-totalLengths = 1 + fullTimes;
-sloughedAmounts = zeros(1, length(fullTimes));
-
-for i = 2:length(sloughingBoundaries)
-    
-    currentTime = fullTimes(i);
-    Sol.x = fullSols{i}(1,:);
-    Sol.y = fullSols{i}(2:end, :);
-    sloughedAmounts(i) = trapz(0:1e-4:currentTime, 0.5*(1 + tanh(10*((0:1e-4:currentTime) - parameters.T))));
-    
-    if (i >= sloughIndex)
-        splitIndex = find(Sol.x == 1, 1);
-        sloughingBoundaries(i) = 2*Sol.y(1, splitIndex);
-    end
-    
-end
-
-figure
-hold on
-plot(fullTimes, totalLengths - sloughedAmounts)
-plot(fullTimes, sloughingBoundaries)
-plot(fullTimes, sloughedAmounts)
-
-% Save these quantities
-outputDirectory = '../../Solutions/AgeingAndSloughing/';
-outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_timestepsloughing_T_2p5';
-save([outputDirectory, 'totallengths_', outputValues,'.mat'], 'totalLengths') % Foundation stresses
-save([outputDirectory, 'sloughingboundaries_', outputValues, '.mat'], 'sloughingBoundaries') % Times
-save([outputDirectory, 'sloughedamounts_', outputValues, '.mat'], 'sloughedAmounts') % Times
-
-%%
-movieObj =  VideoWriter('homoggrowth_rampsloughingtime_T_2p5_fullinterval.avi');
-movieObj.FrameRate = 15;
-open(movieObj);
-
-for i = 2:length(fullSols)
-    
-    figure(1)
-    set(gcf, 'color', 'w');
-    
-    clf
-    %     subplot(1, 2, 1)
-    %     hold on
-    %     plot(fullTimes, parameters.g.*ones(1, length(fullTimes)), 'b', 'linewidth', 2)
-    %     plot(fullTimes, 0.25*(1 + tanh(parameters.H*(fullTimes - parameters.T))), 'r', 'linewidth', 2)
-    %     plot(fullTimes(i).*ones(1, length(0:1e-2:1.25)), 0:1e-2:1.25, 'k', 'linewidth', 2)
-    %     title('Growth vs death rate')
-    %     xlabel('time t')
-    %     ylim([0 1.25])
-    %     xlim([0 fullTimes(end)])
-    %     set(gca, 'linewidth', 1.5)
-    
-    
-    %     subplot(1, 2, 2)
-    hold on
-    plot(-fullSols{i}(3,:), -fullSols{i}(4,:), 'k', 'linewidth', 2)
-    plot(fullSols{i}(3,:), -fullSols{i}(4,:), 'k', 'linewidth', 2)
-        for j = 1:3
-%             if (fullCellPositions{i}(j,1) < 0.5)
-            plot(fullCellPositions{i}(j, 1), -fullCellPositions{i}(j, 2), 's', 'Markersize', 15)
-%             end
-        end
-    ylim([-1.75 0.1])
-    xlim([-1 1])
-    title('Rod shape')
-    set(gca, 'linewidth', 1.5)
-    xlabel('x')
-    ylabel('y')
-    
-    currentFrame = getframe(gcf);
-    writeVideo(movieObj, currentFrame);
-    
-end
-%
-% for i = 1:length(sloughingSols)
-%
-%     figure(1)
-%     clf
-%     subplot(1, 2, 1)
-%     hold on
-%     plot(fullTimes, g.*ones(1, length(fullTimes)), 'b', 'linewidth', 2)
-%     plot(fullTimes, 0.5*(1 + tanh(H*(fullTimes - T))), 'r', 'linewidth', 2)
-%     plot(fullTimes(i).*(0:1e-2:1.5), 0:1e-2:1.5, 'k', 'linewidth', 2)
-%
-%     subplot(1, 2, 2)
-%     hold on
-%     plot(-sloughingSols{i}(3,:), -sloughingSols{i}(4,:), 'r', 'linewidth', 2)
-%     plot(sloughingSols{i}(3,:), -sloughingSols{i}(4,:), 'r', 'linewidth', 2)
-%     ylim([-1 0.1])
-%     xlim([-1 1])
-%     set(gca, 'linewidth', 1.5)
-%
-%     currentFrame = getframe;
-%     writeVideo(movieObj, currentFrame);
-%
+% %%
+% outputDirectory = '../../Solutions/AgeingAndSloughing/';
+% outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_timestepsloughing_T_2p5';
+% load([outputDirectory, 'sols_', outputValues, '.mat'], 'fullSols') % Solutions
+% load([outputDirectory, 'gamma_', outputValues,'.mat'], 'fullGammaSols') % Gamma
+% load([outputDirectory, 'foundationshapes_', outputValues,'.mat'], 'fullFoundationSols') % Foundation stresses
+% load([outputDirectory, 'taggedcells_', outputValues,'.mat'], 'fullCellPositions') % Foundation stresses
+% load([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
+% load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
+% 
+% %%
+% % Calculate the sloughing boundary
+% sloughingBoundaries = ones(1, length(fullTimes));
+% sloughIndex = find(abs(fullTimes - parameters.T) < 1e-3);
+% totalLengths = 1 + fullTimes;
+% sloughedAmounts = zeros(1, length(fullTimes));
+% 
+% for i = 2:length(sloughingBoundaries)
+%     
+%     currentTime = fullTimes(i);
+%     Sol.x = fullSols{i}(1,:);
+%     Sol.y = fullSols{i}(2:end, :);
+%     sloughedAmounts(i) = trapz(0:1e-4:currentTime, 0.5*(1 + tanh(10*((0:1e-4:currentTime) - parameters.T))));
+%     
+%     if (i >= sloughIndex)
+%         splitIndex = find(Sol.x == 1, 1);
+%         sloughingBoundaries(i) = 2*Sol.y(1, splitIndex);
+%     end
+%     
 % end
-
-% close(movieObj);
+% 
+% figure
+% hold on
+% plot(fullTimes, totalLengths - sloughedAmounts)
+% plot(fullTimes, sloughingBoundaries)
+% plot(fullTimes, sloughedAmounts)
+% 
+% % Save these quantities
+% outputDirectory = '../../Solutions/AgeingAndSloughing/';
+% outputValues = 'Eb_1_nu_10_kf_0p01_L0_0p125_homoggrowth_timestepsloughing_T_2p5';
+% save([outputDirectory, 'totallengths_', outputValues,'.mat'], 'totalLengths') % Foundation stresses
+% save([outputDirectory, 'sloughingboundaries_', outputValues, '.mat'], 'sloughingBoundaries') % Times
+% save([outputDirectory, 'sloughedamounts_', outputValues, '.mat'], 'sloughedAmounts') % Times
+% 
+% %%
+% movieObj =  VideoWriter('homoggrowth_rampsloughingtime_T_2p5_fullinterval.avi');
+% movieObj.FrameRate = 15;
+% open(movieObj);
+% 
+% for i = 2:length(fullSols)
+%     
+%     figure(1)
+%     set(gcf, 'color', 'w');
+%     
+%     clf
+%     %     subplot(1, 2, 1)
+%     %     hold on
+%     %     plot(fullTimes, parameters.g.*ones(1, length(fullTimes)), 'b', 'linewidth', 2)
+%     %     plot(fullTimes, 0.25*(1 + tanh(parameters.H*(fullTimes - parameters.T))), 'r', 'linewidth', 2)
+%     %     plot(fullTimes(i).*ones(1, length(0:1e-2:1.25)), 0:1e-2:1.25, 'k', 'linewidth', 2)
+%     %     title('Growth vs death rate')
+%     %     xlabel('time t')
+%     %     ylim([0 1.25])
+%     %     xlim([0 fullTimes(end)])
+%     %     set(gca, 'linewidth', 1.5)
+%     
+%     
+%     %     subplot(1, 2, 2)
+%     hold on
+%     plot(-fullSols{i}(3,:), -fullSols{i}(4,:), 'k', 'linewidth', 2)
+%     plot(fullSols{i}(3,:), -fullSols{i}(4,:), 'k', 'linewidth', 2)
+%         for j = 1:3
+% %             if (fullCellPositions{i}(j,1) < 0.5)
+%             plot(fullCellPositions{i}(j, 1), -fullCellPositions{i}(j, 2), 's', 'Markersize', 15)
+% %             end
+%         end
+%     ylim([-1.75 0.1])
+%     xlim([-1 1])
+%     title('Rod shape')
+%     set(gca, 'linewidth', 1.5)
+%     xlabel('x')
+%     ylabel('y')
+%     
+%     currentFrame = getframe(gcf);
+%     writeVideo(movieObj, currentFrame);
+%     
+% end
+% %
+% % for i = 1:length(sloughingSols)
+% %
+% %     figure(1)
+% %     clf
+% %     subplot(1, 2, 1)
+% %     hold on
+% %     plot(fullTimes, g.*ones(1, length(fullTimes)), 'b', 'linewidth', 2)
+% %     plot(fullTimes, 0.5*(1 + tanh(H*(fullTimes - T))), 'r', 'linewidth', 2)
+% %     plot(fullTimes(i).*(0:1e-2:1.5), 0:1e-2:1.5, 'k', 'linewidth', 2)
+% %
+% %     subplot(1, 2, 2)
+% %     hold on
+% %     plot(-sloughingSols{i}(3,:), -sloughingSols{i}(4,:), 'r', 'linewidth', 2)
+% %     plot(sloughingSols{i}(3,:), -sloughingSols{i}(4,:), 'r', 'linewidth', 2)
+% %     ylim([-1 0.1])
+% %     xlim([-1 1])
+% %     set(gca, 'linewidth', 1.5)
+% %
+% %     currentFrame = getframe;
+% %     writeVideo(movieObj, currentFrame);
+% %
+% % end
+% 
+% % close(movieObj);

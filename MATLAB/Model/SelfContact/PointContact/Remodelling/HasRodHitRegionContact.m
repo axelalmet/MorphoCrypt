@@ -6,10 +6,10 @@ function ContactCondition = HasRodHitRegionContact(contactSol, parameters)
 x = contactSol.y(2,:);
 m = contactSol.y(7,:);
 w0 = parameters.w0;
-contactIndex = find(x == w0, 1);
+contactIndices = find(x == w0);
 
 ContactCondition = 0;
-if (m(contactIndex) < 0)
+if (m(contactIndices(end)) < 0)
     
     ContactCondition = 1;
     

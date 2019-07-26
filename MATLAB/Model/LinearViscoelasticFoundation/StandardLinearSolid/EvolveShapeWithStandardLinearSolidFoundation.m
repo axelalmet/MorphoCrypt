@@ -75,9 +75,6 @@ initY = solFromData.y(3,:);
 
 initDelta = sqrt((initX - initS).^2 + (initY).^2);
 
-initP = (1 - dt*beta/parameters.nu)^(-1).*(dt*beta*(1 - beta)*K/parameters.nu.*(initDelta - y0) ...
-    + (K/parameters.nu).*(initDelta - y0));
-
 gammaOld = 1;
 firstGamma = gammaOld + g*dt;
 parameters.gamma = firstGamma;

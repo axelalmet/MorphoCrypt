@@ -6,7 +6,7 @@ w = 0.01; % Width of the rod cross section
 L0 = 0.125; % Dimensional length of the rod
 L = 1;
 K = 12*kf*L0^4/(w*h^3);
-dt = 0.025; % Time step
+dt = 0.01; % Time step
 Es = 1; % stretching stiffness
 
 % Get the initial solution from AUTO
@@ -46,30 +46,35 @@ parameters.sigma = sigma;
 % Positions we're going to track
 trackedPoints = [0.1, 0.2, 0.4, 0.6];
 
+etaValues = [0.1, 1, 5];
+etaValueNames = {'0p1', '1',  '5'};
+
 % Iterate over different thresholds
-etaValues = [0.5];
-etaValueNames = {'0p5'};
+AsValues = [2.5, 2];
+AsValueNames = {'2p5', '2'};
 
-AsValues = [1.0, 2.5, 5.0];
-AsValueNames = {'1', '2p5', '5'};
+% for j = 1:length(etaValues)
+%     
+%     eta = etaValues(j);
+%     parameters.eta = eta;
+%     
+%     for k = 1:length(AsValues)
 
-for j = 1:length(etaValues)
-    eta = etaValues(j);
-    parameters.eta = eta;
-    
-    for k = 1:length(AsValues)
+parameters.T = 2.5;
         
         % Reset the length parameter (this is important!)
         parameters.L = 1;
-        
-        As = AsValues(k);
-        parameters.As = As;
+        parameters.LMin = 1;
+%         
+%         As = AsValues(k);
+%         parameters.As = As;
         
         % Solve the initial bvp to obtain a structure for the first solution.
         SOld = solFromData.y(1,:);
         
         % Initialise growth
-        firstGamma = 1 + dt*(W(SOld, sigma));
+%         firstGamma = 1 + dt*(W(SOld, sigma));
+        firstGamma = 1 + g*dt;
         parameters.gamma = firstGamma;
         
         solFromData.y(3,:) = (1 - firstGamma)./firstGamma;
@@ -93,15 +98,15 @@ for j = 1:length(etaValues)
         initSol = bvp4c(DerivFun, BcFun, solFromData, solOptions);
         
         toc
-                        
+        
         % Update the initial data
         POld = interp1(solFromData.x, parameters.P, initSol.x);
         XOld = initSol.y(1,:);
         parameters.P = POld + parameters.dt*parameters.nu.*(XOld - POld);
         
-        parameters.gamma = interp1(solFromData.x, parameters.gamma, initSol.x);
+%         parameters.gamma = interp1(solFromData.x, parameters.gamma, initSol.x);
         
-        parameters.Vg = cumtrapz(initSol.x, (parameters.gamma - 1)./dt);
+        parameters.Vg = cumtrapz(initSol.x, (parameters.gamma - 1)./dt.*ones(1, length(initSol.x)));
         parameters.Vc = cumtrapz(initSol.x, (XOld - initSol.x)./dt);
         
         parameters.A = dt.*ones(1, length(initSol.x));
@@ -126,22 +131,35 @@ for j = 1:length(etaValues)
         
         % First non-trivial solution
         Sols{1} = [initSol.x; initSol.y; parameters.P; parameters.gamma.*ones(1, length(initSol.x));...
-            (parameters.gamma - 1)./dt.*ones(1, length(initSol.x)); parameters.Vg; parameters.Vc; parameters.L.*ones(1, length(initSol.x)); parameters.A];
+            (parameters.gamma - 1)./dt.*ones(1, length(initSol.x)); parameters.Vg.*ones(1, length(initSol.x)); parameters.Vc; parameters.L.*ones(1, length(initSol.x)); parameters.A];
         
         % Iterate over the new solutions
         tic
         for i = 1:numSols
             
+%             % Determine whether sloughing should occur or not
+%             AgeFunct = @(S) interp1(sloughSolOld.y(1,:), parameters.A, S) - parameters.As;
+%             
+%             % The key thing here is LMin should really only be determined
+%             % once
+%             if ( (AgeFunct(0) < 0)&&(AgeFunct(sloughSolOld.y(1,end)) > 0)&&(parameters.LMin == 1) )
+%                 LMin = fsolve(AgeFunct, 0.5*(parameters.L), optimset('Display','off'));
+%                 parameters.LMin = LMin;
+%             end
+            
+            parameters.t = times(i); 
             % Update the solution
             [sloughSolNew, gammaNew, LNew, KNew, PNew, VgNew, ANew] = UpdateUnbuckledExtensibleRodWithSloughingSolution(sloughSolOld, parameters, solOptions);
             
             % Update the incremental growth
             gammaOld = parameters.gamma;
             gammaInc = (gammaNew - gammaOld)./(dt*gammaOld);
-            gammaIncremental = interp1(sloughSolOld.x, gammaInc, sloughSolNew.x);
+            gammaIncremental = gammaInc.*ones(1, length(sloughSolNew.x));
+%             gammaIncremental = interp1(sloughSolOld.x, gammaInc, sloughSolNew.x);
             
             % Update gamma to the new mesh
-            parameters.gamma = interp1(sloughSolOld.x, gammaNew, sloughSolNew.x);
+            parameters.gamma = gammaNew;
+%             parameters.gamma = interp1(sloughSolOld.x, gammaNew, sloughSolNew.x);
             
             % Update the foundation shape
             parameters.P = interp1(sloughSolOld.x, PNew, sloughSolNew.x);
@@ -180,32 +198,69 @@ for j = 1:length(etaValues)
             taggedPositions{i} = trackedPositions;
             
             % Update solution structure
-            Sols{i} = [sloughSolOld.x; sloughSolOld.y; parameters.P; parameters.gamma; ...
-                gammaIncremental; parameters.Vg; parameters.Vc; parameters.L.*ones(1, length(sloughSolOld.x)); parameters.A];
+            Sols{i} = [sloughSolOld.x; sloughSolOld.y; parameters.P; parameters.gamma.*ones(1, length(sloughSolOld.x)); ...
+                gammaIncremental.*ones(1, length(sloughSolOld.x)); parameters.Vg; parameters.Vc; parameters.L.*ones(1, length(sloughSolOld.x)); parameters.A];
             
         end
         toc
         
         % Save the solutions
         outputDirectory = '../../../Solutions/UnbuckledRod/';
-        outputValues = ['Es_1_nu_10_k_1000_L0_0p125_sigma_current_2w_clampedbcs_localmechano_mu_10_ns_-0p5_sloughing_boundaryage_eta_', etaValueNames{j}, ...
-            '_As_', AsValueNames{k}];
+%         outputValues = ['Es_1_nu_10_k_1000_L0_0p125_sigma_current_2w_clampedbcs_localmechano_mu_10_ns_-0p5_sloughing_boundaryage_eta_', etaValueNames{j}, ...
+%             '_As_', AsValueNames{k}];
+        outputValues = 'Es_1_nu_10_k_1000_L0_0p125_homoggrowth_clampedbcs_timedependentsloughing_T_2p5';
         save([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
         save([outputDirectory, 'times_', outputValues, '.mat'], 'times') % Times
         save([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
         save([outputDirectory, 'trackedcells_', outputValues, '.mat'], 'taggedPositions') % Times
-    end
+%     end
+% end
+
+
+%%
+%
+outputDirectory = '../../../Solutions/UnbuckledRod/';
+outputValues = ['Es_1_nu_10_k_1000_L0_0p125_homoggrowth_clampedbcs_timedependentsloughing_T_2p5'];
+load([outputDirectory, 'sols_', outputValues, '.mat'], 'Sols') % Solutions
+load([outputDirectory, 'times_', outputValues, '.mat'], 'times') % Times
+load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
+load([outputDirectory, 'trackedcells_', outputValues, '.mat'], 'taggedPositions') % Times
+
+%%
+
+movieObj =  VideoWriter('homoggrowth_timedependentsloughing_T_2p5.avi');
+open(movieObj);
+
+for i = 1:length(times)
+    
+    figure(1)
+    set(gcf, 'color', 'w');
+    
+    clf
+    hold on
+    plot([0 1], [0 0], 'k', 'linewidth', 2)
+        for j = 1:4
+            if (taggedPositions{i}(j, 2) < 1.0)
+            plot(taggedPositions{i}(j, 2), 0*taggedPositions{i}(j, 2), 's', 'Markersize', 15)
+            end
+        end
+    xlim([0 1])
+    ylim([-0.05 0.05])
+    title(['Time = ', num2str(times(i))])
+    set(gca, 'linewidth', 1.5)
+    xlabel('s')
+    
+    currentFrame = getframe(gcf);
+    writeVideo(movieObj, currentFrame);
+    
 end
 
+close(movieObj);
 
-% %%
-% 
-% outputDirectory = '../../../Solutions/UnbuckledRod/';
-% outputValues = ['Es_1_nu_10_k_1000_L0_0p125_sigma_current_2w_clampedbcs_localmechano_mu_10_ns_-0p5_sloughing_boundaryage_eta_0p001', ...
-%     '_As_1'];
-% load([outputDirectory, 'sols_', outputValues, '.mat'], 'fullSols') % Solutions
-% load([outputDirectory, 'times_', outputValues, '.mat'], 'fullTimes') % Times
-% load([outputDirectory, 'parameters_', outputValues, '.mat'], 'parameters') % Times
-% load([outputDirectory, 'trackedcells_', outputValues, '.mat'], 'fullTaggedPositions') % Times
+%%
 
-
+for i = 1:length(times)
+    
+    hold on
+    plot(times(i), Sols{i}(end - 1, 1), '.')
+end
