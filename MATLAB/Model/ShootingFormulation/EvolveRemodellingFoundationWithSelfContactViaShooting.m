@@ -77,12 +77,12 @@ solTol = 1e-4;
 
 % Set the tolerances and max. number of mesh points
 solOptions = odeset('RelTol', 1e-6,'AbsTol', 1e-6, 'Vectorized', 'On');
-previousSol.y = Sols{end - endIndex + 1}(2:(end - 1),:);
+previousSol.y = Sols{end - endIndex + 1}(2:(8),:);
 % parameters.dt = 0.5*parameters.dt;
 
 initGuess = [initSol.y([3, 4, 7], 1)' ...
             + parameters.dt*(previousSol.y([3, 4, 7], 1)' - initSol.y([3, 4, 7], 1)'), ...
-                sCGuess, 100];
+                sCGuess, 0];
 
 maxTries = 100;
 
@@ -90,9 +90,6 @@ tic
 [initUnknowns, solResiduals, dtNew, numTries] = ShootForSelfContactAtAPointSolution(initGuess, initSol, parameters, solOptions, solTol, maxTries);
 
 toc
-
-%%
-
 
 %% Get the new solution and update growth and the foundation accordingly
 

@@ -14,20 +14,6 @@ b1 = parameters.b1;
 currentArcLength = parameters.currentArcLength;
 sigma = parameters.sigma;
 
-% Spring stresses
-PxOld = parameters.Px;
-PyOld = parameters.Py;
-
-% Update the foundation shape
-PxNew = PxOld + dt*nu.*(XOld - PxOld);
-PyNew = PyOld + dt*nu.*(YOld - PyOld);
-
-parameters.Px = PxNew;
-parameters.Py = PyNew;
-
-% Update the intrinsic curvature
-uHatNew = parameters.uHat;
-
 % Define new gamma
 gammaOld = parameters.gamma;
 gammaNew = gammaOld + g*dt;
@@ -46,3 +32,14 @@ solUnknowns = ShootForPreContactSolution(solGuess, solOld, parameters, options, 
 
 % Evaluate the solution with the right values
 solNew = GetPreContactSolution(solUnknowns, solMesh, solOld, parameters, options);
+
+% Update the intrinsic curvature
+uHatNew = parameters.uHat;
+
+% Spring stresses
+PxOld = parameters.Px;
+PyOld = parameters.Py;
+
+% Update the foundation shape
+PxNew = PxOld + dt*nu.*(XOld - PxOld);
+PyNew = PyOld + dt*nu.*(YOld - PyOld);

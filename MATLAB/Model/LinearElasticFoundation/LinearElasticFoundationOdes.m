@@ -4,7 +4,7 @@ K = parameters.K;
 L = parameters.L;
 gamma = parameters.gamma;
 Eb = parameters.Eb;
-
+y0 = parameters.y0;
 uHat = parameters.uHat;
 
     function dMdS = TensionBasedGrowthEqns(x, M)

@@ -1,5 +1,6 @@
 function [SolNew, gammaNew, KNew, PNew, VNew, ANew] = UpdateUnbuckledExtensibleRodPreSloughingSolution(solOld, parameters, options)
 % Get the relevant parameters to update growth in time
+SOld = solOld.x;
 XOld = solOld.y(1,:);
 nOld = solOld.y(2,:);
 
@@ -14,7 +15,8 @@ ns = parameters.ns;
 
 % Update growth
 gammaOld = parameters.gamma;
-gammaNew = gammaOld.*(1 + dt*(W(XOld, sigma) + mu*W(XOld, sigma).*(nOld - ns).*(nOld < ns)));
+% gammaNew = gammaOld.*(1 + dt*(W(SOld, sigma) + mu.*(nOld - ns).*(nOld < ns)));
+gammaNew = gammaOld.*(1 + dt*(W(XOld, sigma) + mu.*(nOld - ns)));
 parameters.gamma = gammaNew;
 
 % Set new foundation stiffness

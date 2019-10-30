@@ -23,7 +23,7 @@ Eb = parameters.Eb;
 
 % Define new gamma
 gammaOld = parameters.gamma;
-gammaNew = gammaOld*(1 + g*dt);
+gammaNew = gammaOld + g*dt;
 % gammaNew = gammaOld.*(1 + dt*W(currentArcLength, sigma));
 parameters.gamma = gammaNew;
 
@@ -36,6 +36,7 @@ EbNew = parameters.Eb;
 KNew = parameters.K;
 
 % Define the ODEs
+% Odes = @(x, M) RemodellingFoundationWithHorizontalRepulsionOdes(x, M, solGuess, parameters);
 Odes = @(x, M) RemodellingFoundationOdes(x, M, solGuess, parameters);
 
 % Define the BCs

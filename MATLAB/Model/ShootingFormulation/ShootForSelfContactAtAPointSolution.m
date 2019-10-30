@@ -7,22 +7,13 @@ function [solUnknowns, solResiduals, dtNew, numTries] = ShootForSelfContactAtAPo
 dtOld = modelParams.dt;
 dtNew = dtOld;
 
-XOld = solOld.y(2,:);
-YOld = solOld.y(3,:);
-initPx = modelParams.Px;
-initPy = modelParams.Py;
-nu = modelParams.nu;
 g = modelParams.g;
 initGamma = modelParams.gamma;
 
 % Evaluate the middle dt
 gammaNew = initGamma + dtNew*g;
-PxNew = initPx + nu*dtNew*(XOld - initPx);
-PyNew = initPy + nu*dtNew*(YOld - initPy);
 
 modelParams.gamma = gammaNew;
-modelParams.Px = PxNew;
-modelParams.Py = PyNew;
 
 % Update growth and the foundations
 dtNew = dtOld;
@@ -72,12 +63,8 @@ while (numTries < maxTries )
             
             % Re-update growth and the foundation
             gammaNew = initGamma + dtNew*g;
-            PxNew = initPx + nu*dtNew*(XOld - initPx);
-            PyNew = initPy + nu*dtNew*(YOld - initPy);
             
             modelParams.gamma = gammaNew;
-            modelParams.Px = PxNew;
-            modelParams.Py = PyNew;
             
         end
     else

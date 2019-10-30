@@ -95,7 +95,8 @@ SOld = solFromData.y(1,:);
 firstGamma = 1 + g*dt;
 parameters.gamma = firstGamma;
 
-parameters.Eb = 1 - b1.*W(SOld, sigma);
+% parameters.Eb = 1 - b1.*W(SOld, sigma);
+parameters.Eb = 1;
 
 % Initialise intrinsic curvature
 parameters.uHat = zeros(1, length(solFromData.x));

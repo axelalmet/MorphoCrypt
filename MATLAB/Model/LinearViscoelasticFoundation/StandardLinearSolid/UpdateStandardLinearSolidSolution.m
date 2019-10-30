@@ -29,7 +29,7 @@ EbNew = Eb;
 Odes = @(x, M) StandardLinearSolidFoundationOdes(x, M, solOld, parameters);
 
 % Define the BCs
-% Bcs = @(Ml, Mr) NonUniformGrowthBCs(Ml, Mr, parameters); 
+% Bcs = @(Ml, Mr) NonUniformGrowthBCs(Ml, Mr, parameters);
 Bcs = @(Ml, Mr) PreSloughingBCs(Ml, Mr, parameters);
 
 % Define solve the ODE system using bvp4c.
@@ -39,7 +39,7 @@ solMeshNew = Sol.x;
 SolNew = Sol;
 
 % solMeshNew = solMeshOld;
-% 
+%
 % SolNew.x = solMeshOld;
 % SolNew.y = deval(Sol, solMeshOld);
 
@@ -49,13 +49,5 @@ YNew =  deval(Sol, solMeshOld, 3);
 
 DeltaNew = sqrt((XNew - SNew).^2 + (YNew).^2);
 
-if (nu == 0)
-    
-    PNew = (1 - beta)*K.*(DeltaNew - y0);
-    
-else
-    
-    PNew = (1 - dt*beta/nu)^(-1).*(POld + dt*beta*(1 - beta)*K/nu.*(DeltaNew - y0) ...
-        + (K/nu).*(DeltaNew - DeltaOld));
-    
-end
+PNew = (1 + dt*beta*nu).*(POld) + dt*beta*(1 - beta)*K*nu.*(DeltaOld - y0) ...
+    + (K).*(DeltaNew - DeltaOld);

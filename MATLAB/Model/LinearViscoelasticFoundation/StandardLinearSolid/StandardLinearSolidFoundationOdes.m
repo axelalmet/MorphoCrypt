@@ -53,17 +53,8 @@ POld = parameters.P;
         DeltaOld = sqrt((XOld - SOld).^2 + (YOld).^2);
         Delta = sqrt((X - S).^2 + (Y).^2);
         
-        % Update the viscoelastic stress in time
-        if (nu == 0)
-            
-            P = (1 - beta)*K.*(Delta - y0);
-            
-        else
-            
-            P = (1 - dt*beta/nu)^(-1).*(POld + dt*beta*(1 - beta)*K/nu.*(Delta - y0) ...
-                     + (K/nu).*(Delta - DeltaOld));
-            
-        end
+        P = (1 + dt*beta*nu).*(POld) + dt*beta*(1 - beta)*K*nu.*(DeltaOld - y0) ...
+        + (K).*(Delta - DeltaOld);
         
         dSdS = L.*ones(1, length(S));
         dxdS = L.*gamma.*cos(theta);
