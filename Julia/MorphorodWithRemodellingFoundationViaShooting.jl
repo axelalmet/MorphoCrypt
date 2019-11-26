@@ -14,20 +14,19 @@ K = 12.0*kf*L0^4/(w*h^3)
 rho = 10.0 # relaxation rate of foundation
 
 # Rod stiffness (homogeneous this time)
-Eb = S -> 1.0
+Eb = 1.0
 
 # Define the Wnt function
 W = S -> exp(-(S./sigma).^2)
 
 # Define the initial growth
-sOld = S -> S
-gammaOld = S -> 1.0
+gamma = 1 + dt
 
 # Define the initial foundation
-px = S -> S
-py = S -> 0.0
+local px = S -> S
+local py = S -> 0.0
 
-# Initial guess obtained from AUTO-07p for linear elastic foundation
+# Initial guess for linear elastic foundation
 initValues = [0.0, 0.0, -0.3351, -98.07, 0.0, 0.0, 0.9871]
 SSpan = (0.0, 0.5) # Solution span
 
@@ -35,14 +34,14 @@ function RodOdes!(du, u, p, S)
     # Define solution components
     s, x, y, nx, ny, theta, m = u
 
-    gamma = S -> gammaOld(S).*(1 + 0.5*dt*W(sOld))./(1 - 0.5*dt*W(s))
-    du[1] = gamma(S) # s' = gamma
-    du[2] = gamma(S).*cos(theta) # x' = gamma * cos(theta)
-    du[3] = gamma(S).*sin(theta) # y' = gamma * sin(theta)
-    du[4] = K.*gamma(S).*(x - px(S)) # nx' = k*gamma*(x - px)
-    du[5] = K.*gamma(S).*(y - py(S)) # ny' = k*gamma*(y - py)
-    du[6] = gamma(S).*m./Eb(S) # theta' = gamma/Eb*m
-    du[7] = gamma(S).*(nx.*sin(theta) - ny.*cos(theta)) # m' = gamma(nx*sin(theta) - ny*cos(theta))
+    # gamma = S -> gammaOld(S).*(1 + 0.5*dt*W(sOld))./(1 - 0.5*dt*W(s))
+    du[1] = gamma # s' = gamma
+    du[2] = gamma.*cos(theta) # x' = gamma * cos(theta)
+    du[3] = gamma.*sin(theta) # y' = gamma * sin(theta)
+    du[4] = K.*gamma.*(x - px(S)) # nx' = k*gamma*(x - px)
+    du[5] = K.*gamma.*(y - py(S)) # ny' = k*gamma*(y - py)
+    du[6] = gamma.*m./Eb # theta' = gamma/Eb*m
+    du[7] = gamma.*(nx.*sin(theta) - ny.*cos(theta)) # m' = gamma(nx*sin(theta) - ny*cos(theta))
 end
 
 function Bcs!(residual, u, p, S)
@@ -63,18 +62,25 @@ bvp = BVProblem(RodOdes!, Bcs!, initValues, SSpan)
 
 # plot(sol, vars=(2, 3))
 
-# print(sol(0, idx=1:7))
+# print(sol(0, idx=1:7))    
 # # Update the foundation. We need the solutions for x and y to do this.
-# xNew = S -> sol(S, idx=2)
-# yNew = S -> sol(S, idx=3) 
-# pxOld = S -> px(S)
-# pyOld = S -> py(S)
+xOld= S -> sol(S, idxs=2)
+yOld = S -> sol(S, idxs=3) 
 
-# px = S -> (pxOld(S) + 0.5*dt*rho*(xNew(S) - xOld(S) + pxOld(S)))./(1 + 0.5*dt*rho)
-# py = S ->  (pyOld(S) + 0.5*dt*rho*(yNew(S) - yOld(S) + pyOld(S)))./(1 + 0.5*dt*rho)
+ # S->  (pxOld(S) + 0.5*dt*rho*(xNew(S) - xOld(S) - pxOld(S)))./(1 + 0.5*dt*rho)
+
+local pxOld = px
+local py = S->  (pxOld(S) + dt*rho*(xOld(S) - pxOld(S)))
+
+# S-> (pyOld(S) + 0.5*dt*rho*(yNew(S) - yOld(S) - pyOld(S)))./(1 + 0.5*dt*rho)
+local pyOld = py
+local py = S-> (pyOld(S) + dt*rho*(yOld(S) - pyOld(S)))
+
+print(px([0.1, 0.2]))
+print(py([0.1, 0.2]))
 
 # # Update the solutions and current arc length
-# solOld = sol
+solOld = sol
 # sOld = S -> solOld(S, idx=1)
 
 # # Now try to solve it again

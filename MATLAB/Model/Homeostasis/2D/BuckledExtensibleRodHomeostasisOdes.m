@@ -16,7 +16,11 @@ sOld = parameters.currentArcLength;
 xOld = solOld.y(2,:);
 yOld = solOld.y(3,:);
 thetaOld = solOld.y(6,:);
-thetaPOld = solOld.y(7,:);
+mOld = solOld.y(7,:);
+
+gamma = parameters.gamma;
+
+thetaPOld = mOld.*gamma;
 
 l = sOld(end);
 
@@ -52,10 +56,14 @@ l = sOld(end);
         dNxdS = K.*(X - Px);
         dNydS = K.*(Y - Py);
         
-        dVdS = (K.*(X - Px).*cos(Theta) + K.*(Y - Py).*sin(Theta) + ...
-            ThetaP./(1 + Es*(Nx.*cos(Theta) + Ny.*sin(Theta))).*(Ny.*cos(Theta) - Nx.*sin(Theta))).*V ...
-                ./(1 + Es.*(Nx.*cos(Theta) + Ny.*sin(Theta))) ...
-                - W(s, sigma).*(1 + mu*tanh(Nx.*cos(Theta) + Ny.*sin(Theta) - ns).*(Nx.*cos(Theta) + Ny.*sin(Theta) < ns));
+%         dVdS = Es*(K.*(X - Px).*cos(Theta) + K.*(Y - Py).*sin(Theta) + ...
+%             ThetaP.*(Ny.*cos(Theta) - Nx.*sin(Theta))).*V./(1 + Es.*(Nx.*cos(Theta) + Ny.*sin(Theta))) ...
+%                 - W(s, sigma).*(1 + mu*tanh(Nx.*cos(Theta) + Ny.*sin(Theta) - ns).*(Nx.*cos(Theta) + Ny.*sin(Theta) < ns));
+
+
+        dVdS = Es*(K.*(X - Px).*cos(Theta) + K.*(Y - Py).*sin(Theta) + ...
+            ThetaP.*(Ny.*cos(Theta) - Nx.*sin(Theta))).*V./(1 + Es.*(Nx.*cos(Theta) + Ny.*sin(Theta))) ...
+                - (W(s, sigma) + mu*tanh(Nx.*cos(Theta) + Ny.*sin(Theta) - ns).*(Nx.*cos(Theta) + Ny.*sin(Theta) < ns));
         
         dMdS = l.*[dNxdS; dNydS; dPxdS; dPydS; dVdS];
         
